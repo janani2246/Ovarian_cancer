@@ -6,6 +6,44 @@ st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
+# ================= UI STYLES =================
+st.markdown("""
+<style>
+
+/* Patient Theme */
+.patient {
+    background-color: #ffe6f0;
+    padding: 25px;
+    border-radius: 15px;
+}
+
+/* Doctor Theme */
+.doctor {
+    background-color: #e6f0ff;
+    padding: 25px;
+    border-radius: 15px;
+}
+
+/* Buttons */
+.stButton>button {
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: bold;
+}
+
+/* Inputs */
+.stTextInput input, .stNumberInput input {
+    border-radius: 8px;
+}
+
+/* Headings */
+h1, h2, h3 {
+    font-family: Arial;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # Sidebar Role
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
@@ -13,6 +51,8 @@ role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 # 👩 PATIENT
 # ============================
 if role == "Patient":
+
+    st.markdown('<div class="patient">', unsafe_allow_html=True)
 
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
@@ -34,21 +74,17 @@ if role == "Patient":
             "Bloating": st.checkbox("Persistent Bloating"),
             "Fatigue": st.checkbox("Fatigue"),
             "Back Pain": st.checkbox("Back Pain"),
-            "Feeling_Full_Quickly": st.checkbox("Feeling_Full_Quickly"),
-            "Urinary_Urgency": st.checkbox("Urinary_Urgency"),
-            "weight_loss": st.checkbox("weight_loss"),
-            "vaginal_bleeding": st.checkbox("vaginal_bleeding"),
-            "menstural_status": st.checkbox("menstural_status"),
-            
-            
-            
+            "Feeling_Full_Quickly": st.checkbox("Feeling Full Quickly"),
+            "Urinary_Urgency": st.checkbox("Urinary Urgency"),
+            "Weight_Loss": st.checkbox("Weight Loss"),
+            "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
+            "Menstrual_Irregular": st.checkbox("Menstrual Irregularities"),
         }
 
         report = st.file_uploader("Upload Reports (Optional)", type=["pdf","png","jpg"])
 
         if st.button("🔍 Predict Risk"):
 
-            # Replace with your ML model later
             risk_score = sum(symptoms.values())
 
             if risk_score >= 3:
@@ -60,7 +96,7 @@ if role == "Patient":
 
             st.subheader("Prediction Result")
             st.success(f"Risk Level: {risk}")
-            st.write(f"Score: {risk_score}/5")
+            st.write(f"Score: {risk_score}/10")
 
             if "High" in risk:
                 st.error("⚠️ Immediate doctor consultation required")
@@ -82,7 +118,6 @@ if role == "Patient":
 
             st.success(f"Care Plan for {name}")
 
-            # Timetable
             st.subheader("📅 Daily Timetable")
             st.write("""
             - 🏃 7–8 AM → Exercise  
@@ -92,7 +127,6 @@ if role == "Patient":
             - 💧 Drink water regularly  
             """)
 
-            # Diet Plan
             st.subheader("🥗 Diet Plan")
             st.write("""
             - Eat fruits & vegetables  
@@ -100,16 +134,19 @@ if role == "Patient":
             - Balanced diet  
             """)
 
-            # Alerts (Simulation)
             st.subheader("🔔 Alerts (Simulation)")
             st.info("Reminder: Breakfast at 9 AM")
             st.info("Reminder: Lunch at 1 PM")
             st.info("Reminder: Dinner at 7 PM")
 
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # ============================
 # 👨‍⚕️ DOCTOR
 # ============================
 elif role == "Doctor":
+
+    st.markdown('<div class="doctor">', unsafe_allow_html=True)
 
     st.header("👨‍⚕️ Doctor Dashboard")
 
@@ -123,9 +160,16 @@ elif role == "Doctor":
     last_visit = st.date_input("Last Visit")
 
     medicines = st.text_area("Medicines Prescribed")
-    notes = st.text_area("Consultation Notes")
 
-    # Store data (temporary)
+    # Pre-filled Consultation Notes
+    notes = st.text_area("Consultation Notes", value="""
+Patient shows symptoms indicating possible ovarian cancer.
+Further tests like CA-125 and ultrasound are recommended.
+Treatment will be decided based on reports.
+Follow healthy diet and medication.
+Next follow-up in 2 weeks.
+""")
+
     if st.button("Save Consultation"):
         st.session_state["patient"] = {
             "name": patient_name,
@@ -134,12 +178,10 @@ elif role == "Doctor":
         }
         st.success("✅ Saved Successfully")
 
-    # Show stored data
     if "patient" in st.session_state:
         st.subheader("📁 Saved Record")
         st.write(st.session_state["patient"])
 
-    # AI Follow-up
     st.subheader("🤖 AI Follow-up")
 
     if st.button("Generate Follow-up"):
@@ -154,3 +196,6 @@ elif role == "Doctor":
         """)
 
         st.info("Follow doctor instructions strictly")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    
