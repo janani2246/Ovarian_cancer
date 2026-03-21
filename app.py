@@ -6,7 +6,7 @@ st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
-# ================= BACKGROUND STYLE =================
+# ================= BACKGROUND =================
 def set_bg(color):
     st.markdown(f"""
     <style>
@@ -25,19 +25,63 @@ role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 # ============================
 if role == "Patient":
 
-    set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # 💗 Pink Gradient
+    set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # Pink
 
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
+    # ================= OPTION 1 =================
     if option == "Predict Risk":
         st.header("👩 Patient Assessment")
 
+        # Age
         age = st.number_input("Enter Age", 10, 100)
 
-        menopause = st.selectbox("Menopause Status", ["Yes", "No", "Unsure"])
-
+        # Family History
         family_history = st.radio("Family History", ["Yes", "No"])
+        family_value = 1 if family_history == "Yes" else 0
 
+        # ----------------------------
+        # Dynamic Logic (IMPORTANT)
+        # ----------------------------
+        if age < 50:
+            st.subheader("🩸 Menstrual Details")
+
+            menstrual_status = st.selectbox(
+                "Menstrual Flow",
+                ["Regular", "Irregular", "Heavy", "Absent"]
+            )
+
+            if menstrual_status == "Regular":
+                menstrual_value = 0
+            elif menstrual_status == "Irregular":
+                menstrual_value = 1
+            elif menstrual_status == "Heavy":
+                menstrual_value = 2
+            else:
+                menstrual_value = 3
+
+            menopause_value = 0
+
+        else:
+            st.subheader("🌸 Menopause Details")
+
+            menopause = st.selectbox(
+                "Menopause Status",
+                ["Yes", "No", "Unsure"]
+            )
+
+            if menopause == "Yes":
+                menopause_value = 1
+            elif menopause == "No":
+                menopause_value = 0
+            else:
+                menopause_value = 2
+
+            menstrual_value = 0
+
+        # ----------------------------
+        # Symptoms
+        # ----------------------------
         st.subheader("Select Symptoms")
 
         symptoms = {
@@ -52,40 +96,31 @@ if role == "Patient":
             "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
         }
 
-        # ✅ FIXED Menstrual Dropdown
-        menstrual_status = st.selectbox(
-            "🩸 Menstrual Flow",
-            ["Regular", "Irregular", "Heavy"]
-        )
-
-        # ✅ ENCODING
-        if menstrual_status == "Regular":
-            menstrual_value = 0
-        elif menstrual_status == "Irregular":
-            menstrual_value = 1
-        else:
-            menstrual_value = 2
-
         report = st.file_uploader("Upload Reports (Optional)", type=["pdf","png","jpg"])
 
+        # ----------------------------
+        # Prediction
+        # ----------------------------
         if st.button("🔍 Predict Risk"):
 
-            # ✅ ADD menstrual into symptoms
+            # Add encoded values
             symptoms["Menstrual"] = menstrual_value
+            symptoms["Menopause"] = menopause_value
+            symptoms["Family"] = family_value
 
-            # ✅ FIXED SUM
+            # Convert to int
             risk_score = sum([int(v) for v in symptoms.values()])
 
-            if risk_score >= 3:
+            if risk_score >= 4:
                 risk = "🔴 High Risk"
-            elif risk_score == 2:
+            elif risk_score >= 2:
                 risk = "🟠 Medium Risk"
             else:
                 risk = "🟢 Low Risk"
 
             st.subheader("Prediction Result")
             st.success(f"Risk Level: {risk}")
-            st.write(f"Score: {risk_score}/10")
+            st.write(f"Score: {risk_score}/12")
 
             if "High" in risk:
                 st.error("⚠️ Immediate doctor consultation required")
@@ -94,6 +129,7 @@ if role == "Patient":
             else:
                 st.success("✅ You are healthy")
 
+    # ================= OPTION 2 =================
     else:
         st.header("🧾 Cancer Confirmed Care Plan")
 
@@ -132,7 +168,7 @@ if role == "Patient":
 # ============================
 elif role == "Doctor":
 
-    set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # 💙 Blue Gradient
+    set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # Blue
 
     st.header("👨‍⚕️ Doctor Dashboard")
 
