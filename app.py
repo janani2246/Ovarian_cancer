@@ -78,7 +78,7 @@ if role == "Patient":
             "Urinary_Urgency": st.checkbox("Urinary Urgency"),
             "Weight_Loss": st.checkbox("Weight Loss"),
             "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
-            "menstrual_status":  st.selectbox( "🩸 Menstrual Flow",["Regular", "Irregular", "Heavy"])
+            "menstrual_status":  st.selectbox("🩸 Menstrual Flow",["Regular", "Irregular", "Heavy"])
         }
 
         report = st.file_uploader("Upload Reports (Optional)", type=["pdf","png","jpg"])
@@ -198,4 +198,3 @@ Next follow-up in 2 weeks.
         st.info("Follow doctor instructions strictly")
 
     st.markdown('</div>', unsafe_allow_html=True)
-    
