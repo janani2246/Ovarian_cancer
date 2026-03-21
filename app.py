@@ -78,7 +78,7 @@ if role == "Patient":
             "Urinary_Urgency": st.checkbox("Urinary Urgency"),
             "Weight_Loss": st.checkbox("Weight Loss"),
             "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
-            "Menstrual_Irregular": st.checkbox("Menstrual Irregularities"),
+            menstrual_status = st.selectbox("Menstrual Status",["Regular", "Irregular", "Heavy"])
         }
 
         report = st.file_uploader("Upload Reports (Optional)", type=["pdf","png","jpg"])
