@@ -38,7 +38,6 @@ if role == "Patient":
             "Urinary_Urgency": st.checkbox("Urinary_Urgency"),
             "weight_loss": st.checkbox("weight_loss"),
             "vaginal_bleeding": st.checkbox("vaginal_bleeding"),
-            "vaginal_bleeding": st.checkbox("vaginal_bleeding"),
             "menstural_status": st.checkbox("menstural_status"),
             
             
