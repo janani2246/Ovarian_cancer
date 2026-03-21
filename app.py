@@ -6,43 +6,16 @@ st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
-# ================= UI STYLES =================
-st.markdown("""
-<style>
-
-/* Patient Theme */
-.patient {
-    background-color: #ffe6f0;
-    padding: 25px;
-    border-radius: 15px;
-}
-
-/* Doctor Theme */
-.doctor {
-    background-color: #e6f0ff;
-    padding: 25px;
-    border-radius: 15px;
-}
-
-/* Buttons */
-.stButton>button {
-    border-radius: 12px;
-    padding: 10px 20px;
-    font-weight: bold;
-}
-
-/* Inputs */
-.stTextInput input, .stNumberInput input {
-    border-radius: 8px;
-}
-
-/* Headings */
-h1, h2, h3 {
-    font-family: Arial;
-}
-
-</style>
-""", unsafe_allow_html=True)
+# ================= BACKGROUND STYLE =================
+def set_bg(color):
+    st.markdown(f"""
+    <style>
+    .stApp {{
+        background: {color};
+        background-attachment: fixed;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
 # Sidebar Role
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
@@ -52,11 +25,10 @@ role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 # ============================
 if role == "Patient":
 
-    st.markdown('<div class="patient">', unsafe_allow_html=True)
+    set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # 💗 Pink Gradient
 
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
-    # ================= OPTION 1 =================
     if option == "Predict Risk":
         st.header("👩 Patient Assessment")
 
@@ -78,14 +50,31 @@ if role == "Patient":
             "Urinary_Urgency": st.checkbox("Urinary Urgency"),
             "Weight_Loss": st.checkbox("Weight Loss"),
             "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
-            "menstrual_status":  st.selectbox("🩸 Menstrual Flow",["Regular", "Irregular", "Heavy"])
         }
+
+        # ✅ FIXED Menstrual Dropdown
+        menstrual_status = st.selectbox(
+            "🩸 Menstrual Flow",
+            ["Regular", "Irregular", "Heavy"]
+        )
+
+        # ✅ ENCODING
+        if menstrual_status == "Regular":
+            menstrual_value = 0
+        elif menstrual_status == "Irregular":
+            menstrual_value = 1
+        else:
+            menstrual_value = 2
 
         report = st.file_uploader("Upload Reports (Optional)", type=["pdf","png","jpg"])
 
         if st.button("🔍 Predict Risk"):
 
-            risk_score = sum(symptoms.values())
+            # ✅ ADD menstrual into symptoms
+            symptoms["Menstrual"] = menstrual_value
+
+            # ✅ FIXED SUM
+            risk_score = sum([int(v) for v in symptoms.values()])
 
             if risk_score >= 3:
                 risk = "🔴 High Risk"
@@ -105,7 +94,6 @@ if role == "Patient":
             else:
                 st.success("✅ You are healthy")
 
-    # ================= OPTION 2 =================
     else:
         st.header("🧾 Cancer Confirmed Care Plan")
 
@@ -139,14 +127,12 @@ if role == "Patient":
             st.info("Reminder: Lunch at 1 PM")
             st.info("Reminder: Dinner at 7 PM")
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
 # ============================
 # 👨‍⚕️ DOCTOR
 # ============================
 elif role == "Doctor":
 
-    st.markdown('<div class="doctor">', unsafe_allow_html=True)
+    set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # 💙 Blue Gradient
 
     st.header("👨‍⚕️ Doctor Dashboard")
 
@@ -161,7 +147,6 @@ elif role == "Doctor":
 
     medicines = st.text_area("Medicines Prescribed")
 
-    # Pre-filled Consultation Notes
     notes = st.text_area("Consultation Notes", value="""
 Patient shows symptoms indicating possible ovarian cancer.
 Further tests like CA-125 and ultrasound are recommended.
@@ -196,5 +181,3 @@ Next follow-up in 2 weeks.
         """)
 
         st.info("Follow doctor instructions strictly")
-
-    st.markdown('</div>', unsafe_allow_html=True)
