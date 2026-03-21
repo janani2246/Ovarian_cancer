@@ -2,93 +2,116 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# ----------------------------
-# Page Config
-# ----------------------------
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
-# ----------------------------
-# Title
-# ----------------------------
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
-# ----------------------------
-# Sidebar Role Selection
-# ----------------------------
+# Sidebar Role
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
 # ============================
-# 🧍 PATIENT FLOW
+# 👩 PATIENT
 # ============================
 if role == "Patient":
-    st.header("👩 Patient Assessment")
 
-    # Step A: Age
-    age = st.number_input("Enter Age", 10, 100)
+    option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
-    # Step B: Menopause
-    menopause = st.selectbox("Menopause Status", ["Yes", "No", "Unsure"])
+    # ================= OPTION 1 =================
+    if option == "Predict Risk":
+        st.header("👩 Patient Assessment")
 
-    # Step C: Family History
-    family_history = st.radio("Family History", ["Yes", "No"])
+        age = st.number_input("Enter Age", 10, 100)
 
-    # Step D: Symptoms
-    st.subheader("Select Symptoms")
-    symptoms = {
-        "Pelvic Pain": st.checkbox("Pelvic Pain"),
-        "Stomach Swelling": st.checkbox("Stomach Swelling"),
-        "Bloating": st.checkbox("Persistent Bloating"),
-        "Fatigue": st.checkbox("Fatigue"),
-        "Back Pain": st.checkbox("Back Pain")
-    }
+        menopause = st.selectbox("Menopause Status", ["Yes", "No", "Unsure"])
 
-    # Step E: Upload Reports
-    st.subheader("Upload Medical Reports")
-    report = st.file_uploader("Upload PDF/Image", type=["pdf", "png", "jpg"])
+        family_history = st.radio("Family History", ["Yes", "No"])
 
-    medicines = st.text_input("Current Medicines (optional)")
+        st.subheader("Select Symptoms")
 
-    # ----------------------------
-    # Step F: Prediction
-    # ----------------------------
-    if st.button("🔍 Predict Risk"):
-        
-        # Simple rule-based (you can replace with your ML model)
-        risk_score = sum(symptoms.values())
+        symptoms = {
+            "Pelvic Pain": st.checkbox("Pelvic Pain"),
+            "Stomach Swelling": st.checkbox("Stomach Swelling"),
+            "Bloating": st.checkbox("Persistent Bloating"),
+            "Fatigue": st.checkbox("Fatigue"),
+            "Back Pain": st.checkbox("Back Pain"),
+            "Feeling_Full_Quickly": st.checkbox("Feeling_Full_Quickly"),
+            "Urinary_Urgency": st.checkbox("Urinary_Urgency"),
+            "weight_loss": st.checkbox("weight_loss"),
+            "vaginal_bleeding": st.checkbox("vaginal_bleeding"),
+            "vaginal_bleeding": st.checkbox("vaginal_bleeding"),
+            "menstural_status": st.checkbox("menstural_status"),
+            
+            
+            
+        }
 
-        if risk_score >= 3:
-            risk = "High Risk 🔴"
-        elif risk_score == 2:
-            risk = "Medium Risk 🟠"
-        else:
-            risk = "Low Risk 🟢"
+        report = st.file_uploader("Upload Reports (Optional)", type=["pdf","png","jpg"])
 
-        st.subheader("Prediction Result")
-        st.write(f"Risk Level: **{risk}**")
-        st.write(f"Risk Score: {risk_score}/5")
+        if st.button("🔍 Predict Risk"):
 
-        # Recommendation
-        if risk_score >= 2:
-            st.warning("⚠️ Please consult a doctor immediately")
-        else:
-            st.success("✅ Maintain healthy lifestyle")
+            # Replace with your ML model later
+            risk_score = sum(symptoms.values())
 
-    # ----------------------------
-    # Step G: Diet Suggestions
-    # ----------------------------
-    st.subheader("🥗 Diet & Lifestyle Advice")
+            if risk_score >= 3:
+                risk = "🔴 High Risk"
+            elif risk_score == 2:
+                risk = "🟠 Medium Risk"
+            else:
+                risk = "🟢 Low Risk"
 
-    st.write("""
-    - Eat fruits and vegetables
-    - Avoid fried/junk foods
-    - Drink plenty of water
-    - Exercise regularly
-    """)
+            st.subheader("Prediction Result")
+            st.success(f"Risk Level: {risk}")
+            st.write(f"Score: {risk_score}/5")
+
+            if "High" in risk:
+                st.error("⚠️ Immediate doctor consultation required")
+            elif "Medium" in risk:
+                st.warning("⚠️ Regular checkup needed")
+            else:
+                st.success("✅ You are healthy")
+
+    # ================= OPTION 2 =================
+    else:
+        st.header("🧾 Cancer Confirmed Care Plan")
+
+        name = st.text_input("Patient Name")
+        age = st.number_input("Age", 10, 100)
+        phone = st.text_input("Phone Number")
+        risk = st.selectbox("Risk Level", ["High", "Medium"])
+
+        if st.button("Generate Care Plan"):
+
+            st.success(f"Care Plan for {name}")
+
+            # Timetable
+            st.subheader("📅 Daily Timetable")
+            st.write("""
+            - 🏃 7–8 AM → Exercise  
+            - 🍽 9–10 AM → Breakfast + Medicine  
+            - 🍛 1–2 PM → Lunch + Medicine  
+            - 🍽 7–8 PM → Dinner + Medicine  
+            - 💧 Drink water regularly  
+            """)
+
+            # Diet Plan
+            st.subheader("🥗 Diet Plan")
+            st.write("""
+            - Eat fruits & vegetables  
+            - Avoid junk & oily food  
+            - Balanced diet  
+            """)
+
+            # Alerts (Simulation)
+            st.subheader("🔔 Alerts (Simulation)")
+            st.info("Reminder: Breakfast at 9 AM")
+            st.info("Reminder: Lunch at 1 PM")
+            st.info("Reminder: Dinner at 7 PM")
 
 # ============================
-# 👨‍⚕️ DOCTOR DASHBOARD
+# 👨‍⚕️ DOCTOR
 # ============================
 elif role == "Doctor":
+
     st.header("👨‍⚕️ Doctor Dashboard")
 
     doctor_name = st.text_input("Doctor Name")
@@ -101,28 +124,34 @@ elif role == "Doctor":
     last_visit = st.date_input("Last Visit")
 
     medicines = st.text_area("Medicines Prescribed")
-
-    st.subheader("Upload Reports / Notes")
-    report = st.file_uploader("Upload Patient Reports")
-
     notes = st.text_area("Consultation Notes")
 
+    # Store data (temporary)
     if st.button("Save Consultation"):
-        st.success("✅ Consultation Saved")
+        st.session_state["patient"] = {
+            "name": patient_name,
+            "meds": medicines,
+            "notes": notes
+        }
+        st.success("✅ Saved Successfully")
 
-    # ----------------------------
+    # Show stored data
+    if "patient" in st.session_state:
+        st.subheader("📁 Saved Record")
+        st.write(st.session_state["patient"])
+
     # AI Follow-up
-    # ----------------------------
     st.subheader("🤖 AI Follow-up")
 
     if st.button("Generate Follow-up"):
-        st.write("### AI Recommendation")
+
+        st.write("### 📋 Plan")
 
         st.write("""
-        - Continue prescribed medicines
-        - Follow strict diet plan
-        - Avoid oily and junk foods
-        - Regular checkups every 3 months
+        - Morning: Medicine + Light Exercise  
+        - Afternoon: Balanced Lunch + Medicine  
+        - Evening: Light walk  
+        - Night: Dinner + Medicine  
         """)
 
         st.info("Follow doctor instructions strictly")
