@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import speech_recognition as sr
-from io import BytesIO
 
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
+
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
 # ================= BACKGROUND =================
@@ -21,88 +20,98 @@ def set_bg(color):
 # Sidebar Role
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
-# ================= Symptom keywords =================
-symptom_keywords = {
-    "Pelvic Pain": ["pelvic pain", "karuppu vathai", "thalai pain"],
-    "Stomach Swelling": ["stomach swelling", "vayiru pudhungudhal", "vayiru pudhumudhal"],
-    "Bloating": ["bloating", "thoppu", "vayiru pudhumudhal"],
-    "Fatigue": ["fatigue", "thakuthal", "samaippu"],
-    "Back Pain": ["back pain", "vetti vathai", "thunai vathai"],
-    "Feeling Full Quickly": ["feeling full quickly", "sariyana saapadhu mikkum"],
-    "Urinary Urgency": ["urinary urgency", "moochi varuthal", "mutrikkai"],
-    "Weight Loss": ["weight loss", "vazhkai kurai", "koi"],
-    "Vaginal Bleeding": ["vaginal bleeding", "thayir sikkal", "thayiru raththam"]
-}
-
 # ============================
 # 👩 PATIENT
 # ============================
 if role == "Patient":
 
     set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # Pink
+
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
-    # ================= OPTION 1: Predict Risk =================
+    # ================= OPTION 1 =================
     if option == "Predict Risk":
         st.header("👩 Patient Assessment")
 
-        # Age & Family History
+        # Age
         age = st.number_input("Enter Age", 10, 100)
+
+        # Family History
         family_history = st.radio("Family History", ["Yes", "No"])
         family_value = 1 if family_history == "Yes" else 0
 
-        # Age-based Logic
+        # ----------------------------
+        # Dynamic Logic (IMPORTANT)
+        # ----------------------------
         if age < 50:
             st.subheader("🩸 Menstrual Details")
-            menstrual_status = st.selectbox("Menstrual Flow", ["Regular", "Irregular", "Heavy", "Absent"])
-            menstrual_value = {"Regular":0, "Irregular":1, "Heavy":2, "Absent":3}[menstrual_status]
+
+            menstrual_status = st.selectbox(
+                "Menstrual Flow",
+                ["Regular", "Irregular", "Heavy", "Absent"]
+            )
+
+            if menstrual_status == "Regular":
+                menstrual_value = 0
+            elif menstrual_status == "Irregular":
+                menstrual_value = 1
+            elif menstrual_status == "Heavy":
+                menstrual_value = 2
+            else:
+                menstrual_value = 3
+
             menopause_value = 0
+
         else:
             st.subheader("🌸 Menopause Details")
-            menopause = st.selectbox("Menopause Status", ["Yes", "No", "Unsure"])
-            menopause_value = {"Yes":1, "No":0, "Unsure":2}[menopause]
+
+            menopause = st.selectbox(
+                "Menopause Status",
+                ["Yes", "No", "Unsure"]
+            )
+
+            if menopause == "Yes":
+                menopause_value = 1
+            elif menopause == "No":
+                menopause_value = 0
+            else:
+                menopause_value = 2
+
             menstrual_value = 0
 
-        # Symptoms Checkboxes
-        st.subheader("Select Symptoms (Optional)")
-        symptom_list = list(symptom_keywords.keys())
-        symptoms = {symptom: st.checkbox(symptom) for symptom in symptom_list}
+        # ----------------------------
+        # Symptoms
+        # ----------------------------
+        st.subheader("Select Symptoms")
 
-        # Voice Input
-        st.subheader("🎤 Voice Input (Optional)")
-        audio = st.audio_input("Speak your symptoms (Tamil / English / Tanglish)")
+        symptoms = {
+            "Pelvic Pain": st.checkbox("Pelvic Pain"),
+            "Stomach Swelling": st.checkbox("Stomach Swelling"),
+            "Bloating": st.checkbox("Persistent Bloating"),
+            "Fatigue": st.checkbox("Fatigue"),
+            "Back Pain": st.checkbox("Back Pain"),
+            "Feeling_Full_Quickly": st.checkbox("Feeling Full Quickly"),
+            "Urinary_Urgency": st.checkbox("Urinary Urgency"),
+            "Weight_Loss": st.checkbox("Weight Loss"),
+            "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
+        }
 
-        if audio:
-            st.audio(audio)
-            audio_bytes = audio.getvalue()
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(BytesIO(audio_bytes)) as source:
-                recorded_audio = recognizer.record(source)
-                try:
-                    text = recognizer.recognize_google(recorded_audio)
-                    st.success("Voice recognized successfully!")
-                    st.write("🗣 You said:", text)
+        
 
-                    # Auto-detect symptoms from voice
-                    for symptom, keywords in symptom_keywords.items():
-                        for kw in keywords:
-                            if kw.lower() in text.lower():
-                                symptoms[symptom] = True
-                                break
-
-                except sr.UnknownValueError:
-                    st.error("Could not understand the audio")
-                except sr.RequestError as e:
-                    st.error(f"Google API error: {e}")
-
-        # Prediction Button
+        # ----------------------------
+        # Prediction
+        # ----------------------------
         if st.button("🔍 Predict Risk"):
+
+            # Add encoded values
             symptoms["Menstrual"] = menstrual_value
             symptoms["Menopause"] = menopause_value
             symptoms["Family"] = family_value
 
+            # Convert to int
             risk_score = sum([int(v) for v in symptoms.values()])
-            if risk_score >= 4:
+
+            if risk_score >= 3:
                 risk = "🔴 High Risk"
             elif risk_score >= 2:
                 risk = "🟠 Medium Risk"
@@ -120,16 +129,19 @@ if role == "Patient":
             else:
                 st.success("✅ You are healthy")
 
-    # ================= OPTION 2: Care Plan =================
+    # ================= OPTION 2 =================
     else:
         st.header("🧾 Cancer Confirmed Care Plan")
+
         name = st.text_input("Patient Name")
         age = st.number_input("Age", 10, 100)
         phone = st.text_input("Phone Number")
         risk = st.selectbox("Risk Level", ["High", "Medium"])
 
         if st.button("Generate Care Plan"):
+
             st.success(f"Care Plan for {name}")
+
             st.subheader("📅 Daily Timetable")
             st.write("""
             - 🏃 7–8 AM → Exercise  
@@ -138,12 +150,14 @@ if role == "Patient":
             - 🍽 7–8 PM → Dinner + Medicine  
             - 💧 Drink water regularly  
             """)
+
             st.subheader("🥗 Diet Plan")
             st.write("""
             - Eat fruits & vegetables  
             - Avoid junk & oily food  
             - Balanced diet  
             """)
+
             st.subheader("🔔 Alerts (Simulation)")
             st.info("Reminder: Breakfast at 9 AM")
             st.info("Reminder: Lunch at 1 PM")
@@ -153,16 +167,22 @@ if role == "Patient":
 # 👨‍⚕️ DOCTOR
 # ============================
 elif role == "Doctor":
+
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # Blue
+
     st.header("👨‍⚕️ Doctor Dashboard")
 
     doctor_name = st.text_input("Doctor Name")
     doctor_phone = st.text_input("Doctor Phone")
+
     st.subheader("Patient Info")
     patient_name = st.text_input("Patient Name")
     patient_phone = st.text_input("Patient Phone")
+
     last_visit = st.date_input("Last Visit")
+
     medicines = st.text_area("Medicines Prescribed")
+
     notes = st.text_area("Consultation Notes", value="""
 Patient shows symptoms indicating possible ovarian cancer.
 Further tests like CA-125 and ultrasound are recommended.
@@ -184,12 +204,46 @@ Next follow-up in 2 weeks.
         st.write(st.session_state["patient"])
 
     st.subheader("🤖 AI Follow-up")
+
     if st.button("Generate Follow-up"):
+
         st.write("### 📋 Plan")
+
         st.write("""
         - Morning: Medicine + Light Exercise  
         - Afternoon: Balanced Lunch + Medicine  
         - Evening: Light walk  
         - Night: Dinner + Medicine  
         """)
+
         st.info("Follow doctor instructions strictly")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
