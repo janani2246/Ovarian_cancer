@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from datetime import date
+from fpdf import FPDF
 
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
-
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
 # ================= BACKGROUND =================
@@ -21,12 +22,11 @@ def set_bg(color):
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
 # ============================
-# 👩 PATIENT
+# 👩 PATIENT (Unchanged)
 # ============================
 if role == "Patient":
 
     set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # Pink
-
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
     # ================= OPTION 1 =================
@@ -40,50 +40,26 @@ if role == "Patient":
         family_history = st.radio("Family History", ["Yes", "No"])
         family_value = 1 if family_history == "Yes" else 0
 
-        # ----------------------------
-        # Dynamic Logic (IMPORTANT)
-        # ----------------------------
+        # Age-based Logic
         if age < 50:
             st.subheader("🩸 Menstrual Details")
-
             menstrual_status = st.selectbox(
                 "Menstrual Flow",
                 ["Regular", "Irregular", "Heavy", "Absent"]
             )
-
-            if menstrual_status == "Regular":
-                menstrual_value = 0
-            elif menstrual_status == "Irregular":
-                menstrual_value = 1
-            elif menstrual_status == "Heavy":
-                menstrual_value = 2
-            else:
-                menstrual_value = 3
-
+            menstrual_value = {"Regular":0, "Irregular":1, "Heavy":2, "Absent":3}[menstrual_status]
             menopause_value = 0
-
         else:
             st.subheader("🌸 Menopause Details")
-
             menopause = st.selectbox(
                 "Menopause Status",
                 ["Yes", "No", "Unsure"]
             )
-
-            if menopause == "Yes":
-                menopause_value = 1
-            elif menopause == "No":
-                menopause_value = 0
-            else:
-                menopause_value = 2
-
+            menopause_value = {"Yes":1, "No":0, "Unsure":2}[menopause]
             menstrual_value = 0
 
-        # ----------------------------
         # Symptoms
-        # ----------------------------
         st.subheader("Select Symptoms")
-
         symptoms = {
             "Pelvic Pain": st.checkbox("Pelvic Pain"),
             "Stomach Swelling": st.checkbox("Stomach Swelling"),
@@ -96,21 +72,13 @@ if role == "Patient":
             "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
         }
 
-        
-
-        # ----------------------------
         # Prediction
-        # ----------------------------
         if st.button("🔍 Predict Risk"):
-
-            # Add encoded values
             symptoms["Menstrual"] = menstrual_value
             symptoms["Menopause"] = menopause_value
             symptoms["Family"] = family_value
 
-            # Convert to int
             risk_score = sum([int(v) for v in symptoms.values()])
-
             if risk_score >= 4:
                 risk = "🔴 High Risk"
             elif risk_score >= 3:
@@ -132,16 +100,13 @@ if role == "Patient":
     # ================= OPTION 2 =================
     else:
         st.header("🧾 Cancer Confirmed Care Plan")
-
         name = st.text_input("Patient Name")
         age = st.number_input("Age", 10, 100)
         phone = st.text_input("Phone Number")
         risk = st.selectbox("Risk Level", ["High", "Medium"])
 
         if st.button("Generate Care Plan"):
-
             st.success(f"Care Plan for {name}")
-
             st.subheader("📅 Daily Timetable")
             st.write("""
             - 🏃 7–8 AM → Exercise  
@@ -150,100 +115,71 @@ if role == "Patient":
             - 🍽 7–8 PM → Dinner + Medicine  
             - 💧 Drink water regularly  
             """)
-
             st.subheader("🥗 Diet Plan")
             st.write("""
             - Eat fruits & vegetables  
             - Avoid junk & oily food  
             - Balanced diet  
             """)
-
             st.subheader("🔔 Alerts (Simulation)")
             st.info("Reminder: Breakfast at 9 AM")
             st.info("Reminder: Lunch at 1 PM")
             st.info("Reminder: Dinner at 7 PM")
 
 # ============================
-# 👨‍⚕️ DOCTOR
+# 👨‍⚕️ DOCTOR (Enhanced)
 # ============================
 elif role == "Doctor":
-
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # Blue
-
     st.header("👨‍⚕️ Doctor Dashboard")
 
+    # Doctor Details
     doctor_name = st.text_input("Doctor Name")
     doctor_phone = st.text_input("Doctor Phone")
 
-    st.subheader("Patient Info")
+    # Patient Details
+    st.subheader("Patient Info / Checkup")
     patient_name = st.text_input("Patient Name")
-    patient_phone = st.text_input("Patient Phone")
-
-    last_visit = st.date_input("Last Visit")
+    patient_age = st.number_input("Age", 10, 100)
+    
+    st.write("Select symptoms observed:")
+    patient_symptoms = {
+        "Pelvic Pain": st.checkbox("Pelvic Pain"),
+        "Stomach Swelling": st.checkbox("Stomach Swelling"),
+        "Bloating": st.checkbox("Persistent Bloating"),
+        "Fatigue": st.checkbox("Fatigue"),
+        "Back Pain": st.checkbox("Back Pain"),
+        "Feeling Full Quickly": st.checkbox("Feeling Full Quickly"),
+        "Urinary Urgency": st.checkbox("Urinary Urgency"),
+        "Weight Loss": st.checkbox("Weight Loss"),
+        "Vaginal Bleeding": st.checkbox("Vaginal Bleeding"),
+    }
 
     medicines = st.text_area("Medicines Prescribed")
+    next_checkup = st.date_input("Next Check-up Date", min_value=date.today())
 
-    notes = st.text_area("Consultation Notes", value="""
-Patient shows symptoms indicating possible ovarian cancer.
-Further tests like CA-125 and ultrasound are recommended.
-Treatment will be decided based on reports.
-Follow healthy diet and medication.
-Next follow-up in 2 weeks.
-""")
-
+    # Save Consultation as PDF
     if st.button("Save Consultation"):
-        st.session_state["patient"] = {
-            "name": patient_name,
-            "meds": medicines,
-            "notes": notes
-        }
-        st.success("✅ Saved Successfully")
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
 
+        pdf.cell(0, 10, f"Doctor: {doctor_name}, Phone: {doctor_phone}", ln=True)
+        pdf.cell(0, 10, f"Patient: {patient_name}, Age: {patient_age}", ln=True)
+        pdf.cell(0, 10, "Symptoms Observed:", ln=True)
+        for sym, val in patient_symptoms.items():
+            if val:
+                pdf.cell(0, 10, f"- {sym}", ln=True)
+        pdf.cell(0, 10, f"Medicines Prescribed: {medicines}", ln=True)
+        pdf.cell(0, 10, f"Next Check-up Date: {next_checkup}", ln=True)
+
+        filename = f"{patient_name}_consultation.pdf"
+        pdf.output(filename)
+
+        st.success(f"✅ Consultation saved as PDF: {filename}")
+        st.info("You can open the PDF from your computer")
+
+    # Display Saved Record
     if "patient" in st.session_state:
-        st.subheader("📁 Saved Record")
+        st.subheader("📁 Last Saved Record")
         st.write(st.session_state["patient"])
-
-    st.subheader("🤖 AI Follow-up")
-
-    if st.button("Generate Follow-up"):
-
-        st.write("### 📋 Plan")
-
-        st.write("""
-        - Morning: Medicine + Light Exercise  
-        - Afternoon: Balanced Lunch + Medicine  
-        - Evening: Light walk  
-        - Night: Dinner + Medicine  
-        """)
-
-        st.info("Follow doctor instructions strictly")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
