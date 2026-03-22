@@ -1,6 +1,6 @@
-streamlit==1.30.0              
-pandas==2.1.0                  
-numpy==1.26.0                  
-pydub==0.25.1                  
-SpeechRecognition==3.11.0      
-ffmpeg-python==0.3.1           
+streamlit==1.30.0          # Web app framework
+pandas==2.1.0              # Data handling
+numpy==1.26.0              # For calculations
+pydub==0.25.1              # Audio file processing
+SpeechRecognition==3.11.0  # Speech-to-text
+ffmpeg-python==0.3.1       # Required for pydub/FFmpeg integration
