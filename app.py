@@ -1,5 +1,132 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import datetime
+from fpdf import FPDF
+
+st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
+
+st.title("🧬 Ovarian Cancer Detection & Care System")
+
+# ================= BACKGROUND =================
+def set_bg(color):
+    st.markdown(f"""
+    <style>
+    .stApp {{
+        background: {color};
+        background-attachment: fixed;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# Sidebar Role
+role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
+
 # ============================
-# 👨‍⚕️ DOCTOR DASHBOARD (FULL)
+# 👩 PATIENT
+# ============================
+if role == "Patient":
+
+    set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")
+
+    option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
+
+    # -------- Risk Prediction --------
+    if option == "Predict Risk":
+
+        st.header("👩 Patient Assessment")
+
+        age = st.number_input("Enter Age", 10, 100)
+
+        family_history = st.radio("Family History", ["Yes", "No"])
+        family_value = 1 if family_history == "Yes" else 0
+
+        if age < 50:
+            st.subheader("🩸 Menstrual Details")
+
+            menstrual_status = st.selectbox(
+                "Menstrual Flow",
+                ["Regular", "Irregular", "Heavy", "Absent"]
+            )
+
+            menstrual_value = ["Regular","Irregular","Heavy","Absent"].index(menstrual_status)
+            menopause_value = 0
+
+        else:
+            st.subheader("🌸 Menopause Details")
+
+            menopause = st.selectbox("Menopause Status", ["Yes", "No", "Unsure"])
+            menopause_value = ["No","Yes","Unsure"].index(menopause)
+            menstrual_value = 0
+
+        st.subheader("Select Symptoms")
+
+        symptoms = {
+            "Pelvic Pain": st.checkbox("Pelvic Pain"),
+            "Stomach Swelling": st.checkbox("Stomach Swelling"),
+            "Bloating": st.checkbox("Persistent Bloating"),
+            "Fatigue": st.checkbox("Fatigue"),
+            "Back Pain": st.checkbox("Back Pain"),
+            "Feeling_Full_Quickly": st.checkbox("Feeling Full Quickly"),
+            "Urinary_Urgency": st.checkbox("Urinary Urgency"),
+            "Weight_Loss": st.checkbox("Weight Loss"),
+            "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
+        }
+
+        if st.button("🔍 Predict Risk"):
+
+            symptoms["Menstrual"] = menstrual_value
+            symptoms["Menopause"] = menopause_value
+            symptoms["Family"] = family_value
+
+            risk_score = sum([int(v) for v in symptoms.values()])
+
+            if risk_score >= 3:
+                risk = "🔴 High Risk"
+                st.error(risk)
+            elif risk_score >= 2:
+                risk = "🟠 Medium Risk"
+                st.warning(risk)
+            else:
+                risk = "🟢 Low Risk"
+                st.success(risk)
+
+            st.write(f"Score: {risk_score}/12")
+
+    # -------- Care Plan --------
+    else:
+
+        st.header("🧾 Cancer Confirmed Care Plan")
+
+        name = st.text_input("Patient Name")
+        age = st.number_input("Age", 10, 100)
+        phone = st.text_input("Phone Number")
+        risk = st.selectbox("Risk Level", ["High", "Medium"])
+
+        if st.button("Generate Care Plan"):
+
+            st.success(f"Care Plan for {name}")
+
+            st.subheader("📅 Daily Timetable")
+            st.write("""
+- 🏃 7–8 AM → Exercise  
+- 🍽 9–10 AM → Breakfast + Medicine  
+- 🍛 1–2 PM → Lunch + Medicine  
+- 🍽 7–8 PM → Dinner + Medicine  
+""")
+
+            st.subheader("🥗 Diet Plan")
+
+            if risk == "High":
+                st.write("Strict diet: Fruits, Vegetables, No Oil")
+            else:
+                st.write("Balanced Diet")
+
+# ============================
+# 👨‍⚕️ DOCTOR
+# ============================
+# ============================
+# 👨‍⚕️ DOCTOR DASHBOARD (IMPROVED)
 # ============================
 
 elif role == "Doctor":
@@ -74,6 +201,8 @@ elif role == "Doctor":
             "Risk": risk_level,
             "Medicines": medicines,
             "Notes": notes,
+            "Food Plan": food_plan(risk_level),
+            "Last Visit": str(last_visit),
             "Next Visit": str(next_visit)
         }
 
@@ -114,14 +243,14 @@ elif role == "Doctor":
             st.success("Deleted Successfully")
 
         # --------------------------
-        # CSV Download
+        # CSV Download (ALL DATA)
         # --------------------------
         csv = df.to_csv(index=False).encode("utf-8")
 
         st.download_button(
-            "⬇️ Download All Patients (CSV)",
+            "⬇️ Download FULL Data (CSV)",
             csv,
-            "patients_data.csv",
+            "full_patient_data.csv",
             "text/csv"
         )
 
@@ -132,23 +261,22 @@ elif role == "Doctor":
         st.bar_chart(df["Risk"].value_counts())
 
     # --------------------------
-    # PDF FULL REPORT
+    # PDF FULL REPORT (ALL DETAILS)
     # --------------------------
     def create_pdf():
         pdf = FPDF()
         pdf.add_page()
-
         pdf.set_font("Arial", size=12)
 
-        pdf.cell(200, 10, txt="OVARIAN CANCER PATIENT REPORT", ln=True, align='C')
-
+        pdf.cell(200, 10, txt="OVARIAN CANCER FULL REPORT", ln=True, align='C')
         pdf.ln(10)
 
         pdf.cell(200, 10, txt=f"Doctor: {doctor_name}", ln=True)
+        pdf.cell(200, 10, txt=f"Phone: {doctor_phone}", ln=True)
 
         pdf.ln(5)
 
-        pdf.cell(200, 10, txt=f"Patient Name: {patient_name}", ln=True)
+        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
         pdf.cell(200, 10, txt=f"Age: {patient_age}", ln=True)
         pdf.cell(200, 10, txt=f"Phone: {patient_phone}", ln=True)
 
@@ -159,9 +287,6 @@ elif role == "Doctor":
         pdf.ln(5)
 
         pdf.multi_cell(0, 10, txt=f"Medicines:\n{medicines}")
-
-        pdf.ln(5)
-
         pdf.multi_cell(0, 10, txt=f"Consultation Notes:\n{notes}")
 
         pdf.ln(5)
@@ -170,6 +295,7 @@ elif role == "Doctor":
 
         pdf.ln(5)
 
+        pdf.cell(200, 10, txt=f"Last Visit: {last_visit}", ln=True)
         pdf.cell(200, 10, txt=f"Next Visit: {next_visit}", ln=True)
 
         file = "full_patient_report.pdf"
@@ -182,7 +308,7 @@ elif role == "Doctor":
 
         with open(file, "rb") as f:
             st.download_button(
-                "⬇️ Click to Download",
+                "⬇️ Click to Download PDF",
                 f,
                 "patient_full_report.pdf"
             )
