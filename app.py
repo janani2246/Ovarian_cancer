@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import speech_recognition as sr   # ✅ ADDED
 
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
@@ -18,21 +17,6 @@ def set_bg(color):
     </style>
     """, unsafe_allow_html=True)
 
-# ================= VOICE FUNCTION =================
-def get_voice_input():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("🎤 Speak your symptoms (Tamil / English)...")
-        audio = r.listen(source)
-
-        try:
-            text = r.recognize_google(audio)
-            st.success(f"You said: {text}")
-            return text.lower()
-        except:
-            st.error("❌ Could not understand")
-            return ""
-
 # Sidebar Role
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
@@ -41,19 +25,24 @@ role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 # ============================
 if role == "Patient":
 
-    set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")
+    set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # Pink
 
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
+    # ================= OPTION 1 =================
     if option == "Predict Risk":
         st.header("👩 Patient Assessment")
 
+        # Age
         age = st.number_input("Enter Age", 10, 100)
 
+        # Family History
         family_history = st.radio("Family History", ["Yes", "No"])
         family_value = 1 if family_history == "Yes" else 0
 
-        # -------- AGE LOGIC --------
+        # ----------------------------
+        # Age-based Logic
+        # ----------------------------
         if age < 50:
             st.subheader("🩸 Menstrual Details")
 
@@ -90,7 +79,9 @@ if role == "Patient":
 
             menstrual_value = 0
 
-        # -------- SYMPTOMS --------
+        # ----------------------------
+        # Symptoms (Checkbox)
+        # ----------------------------
         st.subheader("Select Symptoms")
 
         symptoms = {
@@ -99,54 +90,26 @@ if role == "Patient":
             "Bloating": st.checkbox("Persistent Bloating"),
             "Fatigue": st.checkbox("Fatigue"),
             "Back Pain": st.checkbox("Back Pain"),
-            "Feeling_Full_Quickly": st.checkbox("Feeling Full Quickly"),
-            "Urinary_Urgency": st.checkbox("Urinary Urgency"),
-            "Weight_Loss": st.checkbox("Weight Loss"),
-            "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
+            "Feeling Full Quickly": st.checkbox("Feeling Full Quickly"),
+            "Urinary Urgency": st.checkbox("Urinary Urgency"),
+            "Weight Loss": st.checkbox("Weight Loss"),
+            "Vaginal Bleeding": st.checkbox("Vaginal Bleeding"),
         }
 
-        # 🎤 VOICE ASSISTANT (ADDED)
-        st.subheader("🎤 Voice Assistant (Optional)")
+        # ----------------------------
+        # 🎤 Voice Input (WORKING)
+        # ----------------------------
+        st.subheader("🎤 Voice Input (Optional)")
 
-        if st.button("Speak Symptoms"):
-            voice_text = get_voice_input()
+        audio = st.audio_input("Speak your symptoms (Tamil / English)")
 
-            st.write("📝 Detected Text:", voice_text)
+        if audio:
+            st.audio(audio)
+            st.success("Voice recorded successfully!")
 
-            detected = []
-
-            # English
-            if "pain" in voice_text:
-                detected.append("Pelvic Pain")
-            if "bloating" in voice_text:
-                detected.append("Bloating")
-            if "fatigue" in voice_text:
-                detected.append("Fatigue")
-            if "back" in voice_text:
-                detected.append("Back Pain")
-            if "weight" in voice_text:
-                detected.append("Weight Loss")
-            if "bleeding" in voice_text:
-                detected.append("Vaginal Bleeding")
-
-            # Tamil
-            if "வலி" in voice_text:
-                detected.append("Pelvic Pain")
-            if "வயிறு" in voice_text:
-                detected.append("Stomach Swelling")
-            if "சோர்வு" in voice_text:
-                detected.append("Fatigue")
-            if "முதுகு" in voice_text:
-                detected.append("Back Pain")
-            if "இரத்தம்" in voice_text:
-                detected.append("Vaginal Bleeding")
-
-            if detected:
-                st.success("Detected Symptoms: " + ", ".join(detected))
-            else:
-                st.warning("No symptoms detected")
-
-        # -------- PREDICTION --------
+        # ----------------------------
+        # Prediction
+        # ----------------------------
         if st.button("🔍 Predict Risk"):
 
             symptoms["Menstrual"] = menstrual_value
@@ -155,7 +118,7 @@ if role == "Patient":
 
             risk_score = sum([int(v) for v in symptoms.values()])
 
-            if risk_score >= 3:
+            if risk_score >= 4:
                 risk = "🔴 High Risk"
             elif risk_score >= 2:
                 risk = "🟠 Medium Risk"
@@ -166,6 +129,14 @@ if role == "Patient":
             st.success(f"Risk Level: {risk}")
             st.write(f"Score: {risk_score}/12")
 
+            if "High" in risk:
+                st.error("⚠️ Immediate doctor consultation required")
+            elif "Medium" in risk:
+                st.warning("⚠️ Regular checkup needed")
+            else:
+                st.success("✅ You are healthy")
+
+    # ================= OPTION 2 =================
     else:
         st.header("🧾 Cancer Confirmed Care Plan")
 
@@ -184,24 +155,72 @@ if role == "Patient":
             - 🍽 9–10 AM → Breakfast + Medicine  
             - 🍛 1–2 PM → Lunch + Medicine  
             - 🍽 7–8 PM → Dinner + Medicine  
+            - 💧 Drink water regularly  
             """)
+
+            st.subheader("🥗 Diet Plan")
+            st.write("""
+            - Eat fruits & vegetables  
+            - Avoid junk & oily food  
+            - Balanced diet  
+            """)
+
+            st.subheader("🔔 Alerts (Simulation)")
+            st.info("Reminder: Breakfast at 9 AM")
+            st.info("Reminder: Lunch at 1 PM")
+            st.info("Reminder: Dinner at 7 PM")
 
 # ============================
 # 👨‍⚕️ DOCTOR
 # ============================
 elif role == "Doctor":
 
-    set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")
+    set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # Blue
 
     st.header("👨‍⚕️ Doctor Dashboard")
 
     doctor_name = st.text_input("Doctor Name")
     doctor_phone = st.text_input("Doctor Phone")
 
+    st.subheader("Patient Info")
     patient_name = st.text_input("Patient Name")
     patient_phone = st.text_input("Patient Phone")
 
+    last_visit = st.date_input("Last Visit")
+
     medicines = st.text_area("Medicines Prescribed")
 
+    notes = st.text_area("Consultation Notes", value="""
+Patient shows symptoms indicating possible ovarian cancer.
+Further tests like CA-125 and ultrasound are recommended.
+Treatment will be decided based on reports.
+Follow healthy diet and medication.
+Next follow-up in 2 weeks.
+""")
+
     if st.button("Save Consultation"):
+        st.session_state["patient"] = {
+            "name": patient_name,
+            "meds": medicines,
+            "notes": notes
+        }
         st.success("✅ Saved Successfully")
+
+    if "patient" in st.session_state:
+        st.subheader("📁 Saved Record")
+        st.write(st.session_state["patient"])
+
+    st.subheader("🤖 AI Follow-up")
+
+    if st.button("Generate Follow-up"):
+
+        st.write("### 📋 Plan")
+
+        st.write("""
+        - Morning: Medicine + Light Exercise  
+        - Afternoon: Balanced Lunch + Medicine  
+        - Evening: Light walk  
+        - Night: Dinner + Medicine  
+        """)
+
+        st.info("Follow doctor instructions strictly")
