@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import date
-from fpdf import FPDF
+
 
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 st.title("🧬 Ovarian Cancer Detection & Care System")
