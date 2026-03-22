@@ -1,16 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from io import BytesIO
-from pydub import AudioSegment
-from pydub.utils import which
 import speech_recognition as sr
+from io import BytesIO
 
-# ------------------ Streamlit page ------------------
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
-# ------------------ Background ------------------
+# ================= BACKGROUND =================
 def set_bg(color):
     st.markdown(f"""
     <style>
@@ -21,15 +18,14 @@ def set_bg(color):
     </style>
     """, unsafe_allow_html=True)
 
-# ------------------ Role Selection ------------------
+# Sidebar Role
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
-# ------------------ Symptom keyword mapping ------------------
-# Maps English + Tamil phrases to symptoms
+# ================= Symptom keywords =================
 symptom_keywords = {
     "Pelvic Pain": ["pelvic pain", "karuppu vathai", "thalai pain"],
-    "Stomach Swelling": ["stomach swelling", "vayiru pudhungudhal"],
-    "Bloating": ["bloating", "vayiru pudhumudhal", "thoppu"],
+    "Stomach Swelling": ["stomach swelling", "vayiru pudhungudhal", "vayiru pudhumudhal"],
+    "Bloating": ["bloating", "thoppu", "vayiru pudhumudhal"],
     "Fatigue": ["fatigue", "thakuthal", "samaippu"],
     "Back Pain": ["back pain", "vetti vathai", "thunai vathai"],
     "Feeling Full Quickly": ["feeling full quickly", "sariyana saapadhu mikkum"],
@@ -38,12 +34,15 @@ symptom_keywords = {
     "Vaginal Bleeding": ["vaginal bleeding", "thayir sikkal", "thayiru raththam"]
 }
 
-# ------------------ PATIENT ------------------
+# ============================
+# 👩 PATIENT
+# ============================
 if role == "Patient":
+
     set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # Pink
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
-    # ------------------ OPTION 1: Predict Risk ------------------
+    # ================= OPTION 1: Predict Risk =================
     if option == "Predict Risk":
         st.header("👩 Patient Assessment")
 
@@ -64,42 +63,27 @@ if role == "Patient":
             menopause_value = {"Yes":1, "No":0, "Unsure":2}[menopause]
             menstrual_value = 0
 
-        # ------------------ Symptoms ------------------
+        # Symptoms Checkboxes
         st.subheader("Select Symptoms (Optional)")
         symptom_list = list(symptom_keywords.keys())
         symptoms = {symptom: st.checkbox(symptom) for symptom in symptom_list}
 
-        # ------------------ Voice Input ------------------
+        # Voice Input
         st.subheader("🎤 Voice Input (Optional)")
-        audio = st.audio_input("Speak your symptoms (Tamil / English)")
+        audio = st.audio_input("Speak your symptoms (Tamil / English / Tanglish)")
 
         if audio:
             st.audio(audio)
-
-            # Set ffmpeg path for pydub
-            AudioSegment.converter = which("ffmpeg")  # Or set manually on Windows
-
-            # Convert BytesIO to WAV
             audio_bytes = audio.getvalue()
-            sound = AudioSegment.from_file(BytesIO(audio_bytes))
-            sound = sound.set_channels(1).set_frame_rate(16000)
-            sound.export("temp.wav", format="wav")
-
-            # Recognize speech
             recognizer = sr.Recognizer()
-            with sr.AudioFile("temp.wav") as source:
-                audio_data = recognizer.record(source)
+            with sr.AudioFile(BytesIO(audio_bytes)) as source:
+                recorded_audio = recognizer.record(source)
                 try:
-                    # Try Tamil first, fallback to English
-                    try:
-                        text = recognizer.recognize_google(audio_data, language="ta-IN")
-                    except:
-                        text = recognizer.recognize_google(audio_data, language="en-IN")
-                    
+                    text = recognizer.recognize_google(recorded_audio)
                     st.success("Voice recognized successfully!")
                     st.write("🗣 You said:", text)
 
-                    # Auto-check symptoms
+                    # Auto-detect symptoms from voice
                     for symptom, keywords in symptom_keywords.items():
                         for kw in keywords:
                             if kw.lower() in text.lower():
@@ -109,16 +93,15 @@ if role == "Patient":
                 except sr.UnknownValueError:
                     st.error("Could not understand the audio")
                 except sr.RequestError as e:
-                    st.error(f"API error: {e}")
+                    st.error(f"Google API error: {e}")
 
-        # ------------------ Prediction ------------------
+        # Prediction Button
         if st.button("🔍 Predict Risk"):
             symptoms["Menstrual"] = menstrual_value
             symptoms["Menopause"] = menopause_value
             symptoms["Family"] = family_value
 
             risk_score = sum([int(v) for v in symptoms.values()])
-
             if risk_score >= 4:
                 risk = "🔴 High Risk"
             elif risk_score >= 2:
@@ -137,7 +120,7 @@ if role == "Patient":
             else:
                 st.success("✅ You are healthy")
 
-    # ------------------ OPTION 2: Care Plan ------------------
+    # ================= OPTION 2: Care Plan =================
     else:
         st.header("🧾 Cancer Confirmed Care Plan")
         name = st.text_input("Patient Name")
@@ -166,7 +149,9 @@ if role == "Patient":
             st.info("Reminder: Lunch at 1 PM")
             st.info("Reminder: Dinner at 7 PM")
 
-# ------------------ DOCTOR ------------------
+# ============================
+# 👨‍⚕️ DOCTOR
+# ============================
 elif role == "Doctor":
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # Blue
     st.header("👨‍⚕️ Doctor Dashboard")
