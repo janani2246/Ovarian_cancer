@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from io import BytesIO
+from pydub import AudioSegment
+import speech_recognition as sr
 
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
@@ -26,7 +29,6 @@ role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 if role == "Patient":
 
     set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")  # Pink
-
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
     # ================= OPTION 1 =================
@@ -45,73 +47,68 @@ if role == "Patient":
         # ----------------------------
         if age < 50:
             st.subheader("🩸 Menstrual Details")
-
             menstrual_status = st.selectbox(
                 "Menstrual Flow",
                 ["Regular", "Irregular", "Heavy", "Absent"]
             )
-
-            if menstrual_status == "Regular":
-                menstrual_value = 0
-            elif menstrual_status == "Irregular":
-                menstrual_value = 1
-            elif menstrual_status == "Heavy":
-                menstrual_value = 2
-            else:
-                menstrual_value = 3
-
+            menstrual_value = {"Regular":0, "Irregular":1, "Heavy":2, "Absent":3}[menstrual_status]
             menopause_value = 0
-
         else:
             st.subheader("🌸 Menopause Details")
-
             menopause = st.selectbox(
                 "Menopause Status",
                 ["Yes", "No", "Unsure"]
             )
-
-            if menopause == "Yes":
-                menopause_value = 1
-            elif menopause == "No":
-                menopause_value = 0
-            else:
-                menopause_value = 2
-
+            menopause_value = {"Yes":1, "No":0, "Unsure":2}[menopause]
             menstrual_value = 0
 
         # ----------------------------
         # Symptoms (Checkbox)
         # ----------------------------
-        st.subheader("Select Symptoms")
-
-        symptoms = {
-            "Pelvic Pain": st.checkbox("Pelvic Pain"),
-            "Stomach Swelling": st.checkbox("Stomach Swelling"),
-            "Bloating": st.checkbox("Persistent Bloating"),
-            "Fatigue": st.checkbox("Fatigue"),
-            "Back Pain": st.checkbox("Back Pain"),
-            "Feeling Full Quickly": st.checkbox("Feeling Full Quickly"),
-            "Urinary Urgency": st.checkbox("Urinary Urgency"),
-            "Weight Loss": st.checkbox("Weight Loss"),
-            "Vaginal Bleeding": st.checkbox("Vaginal Bleeding"),
-        }
+        st.subheader("Select Symptoms (Optional)")
+        symptom_list = ["Pelvic Pain", "Stomach Swelling", "Bloating", "Fatigue",
+                        "Back Pain", "Feeling Full Quickly", "Urinary Urgency",
+                        "Weight Loss", "Vaginal Bleeding"]
+        symptoms = {symptom: st.checkbox(symptom) for symptom in symptom_list}
 
         # ----------------------------
-        # 🎤 Voice Input (WORKING)
+        # 🎤 Voice Input (Optional)
         # ----------------------------
         st.subheader("🎤 Voice Input (Optional)")
 
         audio = st.audio_input("Speak your symptoms (Tamil / English)")
-
         if audio:
             st.audio(audio)
-            st.success("Voice recorded successfully!")
+
+            # Convert to WAV
+            audio_bytes = audio.getvalue()
+            sound = AudioSegment.from_file(BytesIO(audio_bytes))
+            sound = sound.set_channels(1).set_frame_rate(16000)
+            sound.export("temp.wav", format="wav")
+
+            # Speech Recognition
+            recognizer = sr.Recognizer()
+            with sr.AudioFile("temp.wav") as source:
+                audio_data = recognizer.record(source)
+                try:
+                    text = recognizer.recognize_google(audio_data, language="en-IN")  # English/Indian accents
+                    st.success("Voice recognized successfully!")
+                    st.write("🗣 You said:", text)
+
+                    # Auto-check symptoms from voice
+                    for symptom in symptom_list:
+                        if symptom.lower() in text.lower():
+                            symptoms[symptom] = True
+
+                except sr.UnknownValueError:
+                    st.error("Could not understand the audio")
+                except sr.RequestError as e:
+                    st.error(f"API error: {e}")
 
         # ----------------------------
         # Prediction
         # ----------------------------
         if st.button("🔍 Predict Risk"):
-
             symptoms["Menstrual"] = menstrual_value
             symptoms["Menopause"] = menopause_value
             symptoms["Family"] = family_value
@@ -146,9 +143,7 @@ if role == "Patient":
         risk = st.selectbox("Risk Level", ["High", "Medium"])
 
         if st.button("Generate Care Plan"):
-
             st.success(f"Care Plan for {name}")
-
             st.subheader("📅 Daily Timetable")
             st.write("""
             - 🏃 7–8 AM → Exercise  
@@ -157,14 +152,12 @@ if role == "Patient":
             - 🍽 7–8 PM → Dinner + Medicine  
             - 💧 Drink water regularly  
             """)
-
             st.subheader("🥗 Diet Plan")
             st.write("""
             - Eat fruits & vegetables  
             - Avoid junk & oily food  
             - Balanced diet  
             """)
-
             st.subheader("🔔 Alerts (Simulation)")
             st.info("Reminder: Breakfast at 9 AM")
             st.info("Reminder: Lunch at 1 PM")
@@ -176,7 +169,6 @@ if role == "Patient":
 elif role == "Doctor":
 
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")  # Blue
-
     st.header("👨‍⚕️ Doctor Dashboard")
 
     doctor_name = st.text_input("Doctor Name")
@@ -185,7 +177,6 @@ elif role == "Doctor":
     st.subheader("Patient Info")
     patient_name = st.text_input("Patient Name")
     patient_phone = st.text_input("Patient Phone")
-
     last_visit = st.date_input("Last Visit")
 
     medicines = st.text_area("Medicines Prescribed")
@@ -213,14 +204,11 @@ Next follow-up in 2 weeks.
     st.subheader("🤖 AI Follow-up")
 
     if st.button("Generate Follow-up"):
-
         st.write("### 📋 Plan")
-
         st.write("""
         - Morning: Medicine + Light Exercise  
         - Afternoon: Balanced Lunch + Medicine  
         - Evening: Light walk  
         - Night: Dinner + Medicine  
         """)
-
         st.info("Follow doctor instructions strictly")
