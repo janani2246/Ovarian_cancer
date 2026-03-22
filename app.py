@@ -111,9 +111,9 @@ if role == "Patient":
             # Convert to int
             risk_score = sum([int(v) for v in symptoms.values()])
 
-            if risk_score >= 3:
+            if risk_score >= 4:
                 risk = "🔴 High Risk"
-            elif risk_score >= 2:
+            elif risk_score >= 3:
                 risk = "🟠 Medium Risk"
             else:
                 risk = "🟢 Low Risk"
