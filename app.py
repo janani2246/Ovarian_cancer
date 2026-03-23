@@ -82,14 +82,11 @@ if role == "Patient":
             risk_score = sum([int(v) for v in symptoms.values()])
 
             if risk_score >= 3:
-                risk = "🔴 High Risk"
-                st.error(risk)
+                st.error("🔴 High Risk")
             elif risk_score >= 2:
-                risk = "🟠 Medium Risk"
-                st.warning(risk)
+                st.warning("🟠 Medium Risk")
             else:
-                risk = "🟢 Low Risk"
-                st.success(risk)
+                st.success("🟢 Low Risk")
 
             st.write(f"Score: {risk_score}/12")
 
@@ -101,7 +98,8 @@ if role == "Patient":
         name = st.text_input("Patient Name")
         age = st.number_input("Age", 10, 100)
         phone = st.text_input("Phone Number")
-        risk = st.selectbox("Risk Level", ["High", "Medium"])
+
+        risk = st.selectbox("Risk Level", ["High", "Medium", "Low"])
 
         if st.button("Generate Care Plan"):
 
@@ -115,83 +113,121 @@ if role == "Patient":
 - 🍽 7–8 PM → Dinner + Medicine  
 """)
 
-            st.subheader("🥗 Diet Plan")
+            # -------- WEEKLY PLAN --------
+            st.subheader("📅 Weekly Diet & Exercise Plan")
 
             if risk == "High":
-                st.write("Strict diet: Fruits, Vegetables, No Oil")
+
+                data = {
+                    "Day": ["Day 1","Day 2","Day 3","Day 4","Day 5","Day 6","Day 7"],
+                    "Food": [
+                        "Milk, Soup, Juice, Kanji",
+                        "Protein drink, Soup, Coconut water",
+                        "Milk, Dal soup, Juice",
+                        "Soup, Porridge",
+                        "Veg soup, Juice",
+                        "Protein drink, Soup",
+                        "Milk, Soup"
+                    ],
+                    "Exercise": [
+                        "Breathing (5 mins)",
+                        "Light stretching",
+                        "Deep breathing",
+                        "Relaxation",
+                        "Light movement",
+                        "Breathing",
+                        "Rest"
+                    ]
+                }
+
+                st.error("🔴 Severe Stage Plan")
+
+            elif risk == "Medium":
+
+                data = {
+                    "Day": ["Day 1","Day 2","Day 3","Day 4","Day 5","Day 6","Day 7"],
+                    "Food": [
+                        "Idli, Rice + Dal, Banana",
+                        "Oats, Khichdi, Juice",
+                        "Upma, Rice + Veg",
+                        "Idli, Soft rice",
+                        "Oats, Khichdi",
+                        "Dosa, Rice + Dal",
+                        "Idli, Soft rice"
+                    ],
+                    "Exercise": [
+                        "Walking (10 mins)",
+                        "Stretching",
+                        "Light yoga",
+                        "Walking",
+                        "Breathing",
+                        "Stretching",
+                        "Light yoga"
+                    ]
+                }
+
+                st.warning("🟠 Mid Level Plan")
+
             else:
-                st.write("Balanced Diet")
+
+                data = {
+                    "Day": ["Day 1","Day 2","Day 3","Day 4","Day 5","Day 6","Day 7"],
+                    "Food": [
+                        "Oats + Fruits, Rice + Veg",
+                        "Idli, Spinach rice",
+                        "Dosa, Brown rice",
+                        "Upma, Veg rice",
+                        "Oats, Veg biryani",
+                        "Idli, Sambar",
+                        "Dosa, Brown rice"
+                    ],
+                    "Exercise": [
+                        "Walking (20 mins)",
+                        "Yoga",
+                        "Walking",
+                        "Stretching",
+                        "Yoga",
+                        "Walking",
+                        "Light workout"
+                    ]
+                }
+
+                st.success("🟢 Starting Stage Plan")
+
+            df_plan = pd.DataFrame(data)
+            st.dataframe(df_plan)
 
 # ============================
 # 👨‍⚕️ DOCTOR
 # ============================
-# ============================
-# 👨‍⚕️ DOCTOR DASHBOARD (IMPROVED)
-# ============================
-
 elif role == "Doctor":
-
-    import datetime
-    from fpdf import FPDF
 
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")
 
     st.header("👨‍⚕️ Smart Doctor Dashboard")
 
-    # --------------------------
-    # Doctor Info
-    # --------------------------
-    st.subheader("🩺 Doctor Information")
+    st.subheader("🩺 Doctor Info")
     doctor_name = st.text_input("Doctor Name")
     doctor_phone = st.text_input("Doctor Phone")
 
-    # --------------------------
-    # Patient Details
-    # --------------------------
     st.subheader("📋 Patient Details")
 
     patient_name = st.text_input("Patient Name")
     patient_age = st.number_input("Age", 1, 120)
-    patient_phone = st.text_input("Phone Number")
+    patient_phone = st.text_input("Phone")
 
     risk_level = st.selectbox("Risk Level", ["High", "Medium", "Low"])
 
     last_visit = st.date_input("Last Visit")
     next_visit = st.date_input("Next Visit")
 
-    medicines = st.text_area("Medicines Prescribed")
-    notes = st.text_area("Consultation Notes")
+    medicines = st.text_area("Medicines")
+    notes = st.text_area("Notes")
 
-    # --------------------------
-    # Food Plan
-    # --------------------------
-    def food_plan(risk):
-        if risk == "High":
-            return """High Risk Diet:
-- Morning: Oats + Fruits
-- Lunch: Brown Rice + Vegetables
-- Dinner: Soup + Salad
-- Avoid Oil & Sugar"""
-        elif risk == "Medium":
-            return """Medium Risk Diet:
-- Idli / Dosa
-- Rice + Veg Curry
-- Chapati"""
-        else:
-            return """Low Risk Diet:
-- Normal Healthy Food
-- Exercise Daily"""
-
-    st.subheader("🥗 Food Recommendation")
-    st.text(food_plan(risk_level))
-
-    # --------------------------
-    # Save Records
-    # --------------------------
     if "records" not in st.session_state:
         st.session_state["records"] = []
 
-    if st.button("💾 Save Patient Record"):
+    if st.button("💾 Save"):
 
         record = {
             "Doctor": doctor_name,
@@ -200,126 +236,38 @@ elif role == "Doctor":
             "Phone": patient_phone,
             "Risk": risk_level,
             "Medicines": medicines,
-            "Notes": notes,
-            "Food Plan": food_plan(risk_level),
-            "Last Visit": str(last_visit),
             "Next Visit": str(next_visit)
         }
 
         st.session_state["records"].append(record)
+        st.success("Saved")
 
-        st.success("✅ Patient Record Saved")
-
-    # --------------------------
-    # Show Records
-    # --------------------------
     if st.session_state["records"]:
-        st.subheader("📊 All Patients Data")
-
         df = pd.DataFrame(st.session_state["records"])
         st.dataframe(df)
 
-        # --------------------------
-        # Search
-        # --------------------------
-        st.subheader("🔍 Search Patient")
-        search = st.text_input("Enter Patient Name")
-
-        if search:
-            result = df[df["Patient"].str.contains(search, case=False)]
-            st.write(result)
-
-        # --------------------------
-        # Delete
-        # --------------------------
-        st.subheader("❌ Delete Patient")
-        delete_name = st.text_input("Enter Name to Delete")
-
-        if st.button("Delete Record"):
-            st.session_state["records"] = [
-                r for r in st.session_state["records"]
-                if r["Patient"].lower() != delete_name.lower()
-            ]
-            st.success("Deleted Successfully")
-
-        # --------------------------
-        # CSV Download (ALL DATA)
-        # --------------------------
         csv = df.to_csv(index=False).encode("utf-8")
 
-        st.download_button(
-            "⬇️ Download FULL Data (CSV)",
-            csv,
-            "full_patient_data.csv",
-            "text/csv"
-        )
+        st.download_button("Download CSV", csv, "patients.csv")
 
-        # --------------------------
-        # Chart
-        # --------------------------
-        st.subheader("📈 Risk Analysis Chart")
-        st.bar_chart(df["Risk"].value_counts())
+    st.subheader("📄 PDF Report")
 
-    # --------------------------
-    # PDF FULL REPORT (ALL DETAILS)
-    # --------------------------
     def create_pdf():
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
 
-        pdf.cell(200, 10, txt="OVARIAN CANCER FULL REPORT", ln=True, align='C')
-        pdf.ln(10)
+        pdf.cell(200, 10, txt="Patient Report", ln=True)
 
         pdf.cell(200, 10, txt=f"Doctor: {doctor_name}", ln=True)
-        pdf.cell(200, 10, txt=f"Phone: {doctor_phone}", ln=True)
-
-        pdf.ln(5)
-
         pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
-        pdf.cell(200, 10, txt=f"Age: {patient_age}", ln=True)
-        pdf.cell(200, 10, txt=f"Phone: {patient_phone}", ln=True)
+        pdf.cell(200, 10, txt=f"Risk: {risk_level}", ln=True)
 
-        pdf.ln(5)
-
-        pdf.cell(200, 10, txt=f"Risk Level: {risk_level}", ln=True)
-
-        pdf.ln(5)
-
-        pdf.multi_cell(0, 10, txt=f"Medicines:\n{medicines}")
-        pdf.multi_cell(0, 10, txt=f"Consultation Notes:\n{notes}")
-
-        pdf.ln(5)
-
-        pdf.multi_cell(0, 10, txt=f"Food Plan:\n{food_plan(risk_level)}")
-
-        pdf.ln(5)
-
-        pdf.cell(200, 10, txt=f"Last Visit: {last_visit}", ln=True)
-        pdf.cell(200, 10, txt=f"Next Visit: {next_visit}", ln=True)
-
-        file = "full_patient_report.pdf"
+        file = "report.pdf"
         pdf.output(file)
-
         return file
 
-    if st.button("📄 Download Full Report"):
+    if st.button("Download PDF"):
         file = create_pdf()
-
         with open(file, "rb") as f:
-            st.download_button(
-                "⬇️ Click to Download PDF",
-                f,
-                "patient_full_report.pdf"
-            )
-
-    # --------------------------
-    # Alerts
-    # --------------------------
-    st.subheader("🔔 Alerts")
-
-    today = str(datetime.date.today())
-
-    for r in st.session_state["records"]:
-        if r["Next Visit"] == today:
-            st.warning(f"⚠️ {r['Patient']} has visit today!")
+            st.download_button("Click to Download", f, "report.pdf")
