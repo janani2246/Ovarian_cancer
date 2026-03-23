@@ -105,13 +105,6 @@ if role == "Patient":
 
             st.success(f"Care Plan for {name}")
 
-            st.subheader("📅 Daily Timetable")
-            st.write("""
-- 🏃 7–8 AM → Exercise  
-- 🍽 9–10 AM → Breakfast + Medicine  
-- 🍛 1–2 PM → Lunch + Medicine  
-- 🍽 7–8 PM → Dinner + Medicine  
-""")
 
             # -------- WEEKLY PLAN --------
             st.subheader("📅 Weekly Diet & Exercise Plan")
