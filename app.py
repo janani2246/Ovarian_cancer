@@ -1,4 +1,94 @@
-st.subheader("🍽 1 Week Food Timetable")
+import streamlit as st
+import pandas as pd
+import numpy as np
+import datetime
+from fpdf import FPDF
+
+st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
+
+st.title("🧬 Ovarian Cancer Detection & Care System")
+
+# ================= BACKGROUND =================
+def set_bg(color):
+    st.markdown(f"""
+    <style>
+    .stApp {{
+        background: {color};
+        background-attachment: fixed;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# Sidebar Role
+role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
+
+# ============================
+# 👩 PATIENT
+# ============================
+if role == "Patient":
+
+    set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")
+
+    option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
+
+    # ================= OPTION 1 =================
+    if option == "Predict Risk":
+        st.header("👩 Patient Assessment")
+
+        age = st.number_input("Enter Age", 10, 100)
+
+        family_history = st.radio("Family History", ["Yes", "No"])
+        family_value = 1 if family_history == "Yes" else 0
+
+        if age < 50:
+            st.subheader("🩸 Menstrual Details")
+
+            menstrual_status = st.selectbox(
+                "Menstrual Flow",
+                ["Regular", "Irregular", "Heavy", "Absent"]
+            )
+
+            menstrual_value = ["Regular","Irregular","Heavy","Absent"].index(menstrual_status)
+            menopause_value = 0
+
+        else:
+            st.subheader("🌸 Menopause Details")
+
+            menopause = st.selectbox("Menopause Status", ["Yes", "No", "Unsure"])
+            menopause_value = ["No","Yes","Unsure"].index(menopause)
+            menstrual_value = 0
+
+        st.subheader("Select Symptoms")
+
+        symptoms = {
+            "Pelvic Pain": st.checkbox("Pelvic Pain"),
+            "Stomach Swelling": st.checkbox("Stomach Swelling"),
+            "Bloating": st.checkbox("Persistent Bloating"),
+            "Fatigue": st.checkbox("Fatigue"),
+            "Back Pain": st.checkbox("Back Pain"),
+            "Feeling_Full_Quickly": st.checkbox("Feeling Full Quickly"),
+            "Urinary_Urgency": st.checkbox("Urinary Urgency"),
+            "Weight_Loss": st.checkbox("Weight Loss"),
+            "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
+        }
+
+        if st.button("🔍 Predict Risk"):
+
+            symptoms["Menstrual"] = menstrual_value
+            symptoms["Menopause"] = menopause_value
+            symptoms["Family"] = family_value
+
+            risk_score = sum([int(v) for v in symptoms.values()])
+
+            if risk_score >= 3:
+                risk = "🔴 High Risk"
+            elif risk_score >= 2:
+                risk = "🟠 Medium Risk"
+            else:
+                risk = "🟢 Low Risk"
+
+            st.success(f"Risk Level: {risk}")
+            st.write(f"Score: {risk_score}/12")st.subheader("🍽 1 Week Food Timetable")
 
             if risk == "High":
 
