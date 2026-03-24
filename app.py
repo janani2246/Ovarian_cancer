@@ -8,7 +8,6 @@ st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
-# ================= BACKGROUND =================
 def set_bg(color):
     st.markdown(f"""
     <style>
@@ -19,20 +18,18 @@ def set_bg(color):
     </style>
     """, unsafe_allow_html=True)
 
-# Sidebar Role
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
-# ============================
-# 👩 PATIENT
-# ============================
+# ================= PATIENT =================
 if role == "Patient":
 
     set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")
 
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
-    # ================= OPTION 1 =================
+    # -------- Predict --------
     if option == "Predict Risk":
+
         st.header("👩 Patient Assessment")
 
         age = st.number_input("Enter Age", 10, 100)
@@ -41,35 +38,21 @@ if role == "Patient":
         family_value = 1 if family_history == "Yes" else 0
 
         if age < 50:
-            st.subheader("🩸 Menstrual Details")
-
             menstrual_status = st.selectbox(
                 "Menstrual Flow",
                 ["Regular", "Irregular", "Heavy", "Absent"]
             )
-
             menstrual_value = ["Regular","Irregular","Heavy","Absent"].index(menstrual_status)
             menopause_value = 0
-
         else:
-            st.subheader("🌸 Menopause Details")
-
             menopause = st.selectbox("Menopause Status", ["Yes", "No", "Unsure"])
             menopause_value = ["No","Yes","Unsure"].index(menopause)
             menstrual_value = 0
 
-        st.subheader("Select Symptoms")
-
         symptoms = {
             "Pelvic Pain": st.checkbox("Pelvic Pain"),
-            "Stomach Swelling": st.checkbox("Stomach Swelling"),
-            "Bloating": st.checkbox("Persistent Bloating"),
+            "Bloating": st.checkbox("Bloating"),
             "Fatigue": st.checkbox("Fatigue"),
-            "Back Pain": st.checkbox("Back Pain"),
-            "Feeling_Full_Quickly": st.checkbox("Feeling Full Quickly"),
-            "Urinary_Urgency": st.checkbox("Urinary Urgency"),
-            "Weight_Loss": st.checkbox("Weight Loss"),
-            "Vaginal_Bleeding": st.checkbox("Vaginal Bleeding"),
         }
 
         if st.button("🔍 Predict Risk"):
@@ -81,14 +64,39 @@ if role == "Patient":
             risk_score = sum([int(v) for v in symptoms.values()])
 
             if risk_score >= 3:
-                risk = "🔴 High Risk"
+                st.error("🔴 High Risk")
             elif risk_score >= 2:
-                risk = "🟠 Medium Risk"
+                st.warning("🟠 Medium Risk")
             else:
-                risk = "🟢 Low Risk"
+                st.success("🟢 Low Risk")
 
-            st.success(f"Risk Level: {risk}")
-            st.write(f"Score: {risk_score}/12")st.subheader("🍽 1 Week Food Timetable")
+            st.write(f"Score: {risk_score}/12")
+
+    # -------- Care Plan --------
+    else:
+
+        st.header("🧾 Cancer Confirmed Care Plan")
+
+        name = st.text_input("Patient Name")
+        age = st.number_input("Age", 10, 100)
+        phone = st.text_input("Phone Number")
+
+        risk = st.selectbox("Risk Level", ["High", "Medium", "Low"])
+
+        if st.button("Generate Care Plan"):
+
+            st.success(f"Care Plan for {name}")
+
+            st.subheader("📅 Daily Timetable")
+            st.write("""
+- 🏃 7–8 AM → Exercise  
+- 🍽 9–10 AM → Breakfast  
+- 🍛 1–2 PM → Lunch  
+- 🍽 7–8 PM → Dinner  
+""")
+
+            # ================= FOOD TIMETABLE =================
+            st.subheader("🍽 1 Week Food Timetable")
 
             if risk == "High":
 
@@ -122,6 +130,8 @@ if role == "Patient":
 
             df_food = pd.DataFrame(data)
             st.table(df_food)
+
+
 
 # ============================
 # 👨‍⚕️ DOCTOR
