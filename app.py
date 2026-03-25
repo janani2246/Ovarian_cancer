@@ -85,6 +85,9 @@ if role == "Patient":
     set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
+    # Initialize risk_level for safe usage
+    risk_level = None
+
     # -------- Predict --------
     if option == "Predict Risk":
         st.header("👩 Patient Assessment")
@@ -126,71 +129,60 @@ if role == "Patient":
                 st.success("🟢 Low Risk")
             st.write(f"Score: {risk_score}/12")
 
-            # ------------------- Hospital Finder -------------------
-          # ------------------- Hospital Finder (Fixed) -------------------
-if risk_level in ["High", "Medium"]:
-    st.subheader("🏥 Find Nearby Hospitals")
+    # -------- Hospital Finder --------
+    if risk_level in ["High", "Medium"]:
+        st.subheader("🏥 Find Nearby Hospitals")
+        area = st.text_input("Area")
+        city = st.text_input("City")
+        state = st.text_input("State")
+        search = st.text_input("🔍 Search Hospital Name (optional)")
 
-    # Get location inputs
-    area = st.text_input("Area")
-    city = st.text_input("City")
-    state = st.text_input("State")
-    search = st.text_input("🔍 Search Hospital Name (optional)")
-
-    # Single button to trigger all
-    if st.button("📍 Find Hospitals Near You"):
-
-        if not city or not state:
-            st.warning("⚠️ Please enter City and State")
-        else:
-            full_address = f"{area}, {city}, {state}, India"
-            with st.spinner("📍 Finding your location..."):
-                location = get_location(full_address)
-
-            if location:
-                lat, lon = location.latitude, location.longitude
-                st.success(f"✅ Location found: ({lat}, {lon})")
-
-                with st.spinner("🏥 Fetching nearby hospitals..."):
-                    nearby = get_hospitals_osm(lat, lon)
-                    searched = search_hospitals_by_name(search, city, state) if search else []
-                    combined = {(h[1], h[2]): h for h in nearby + searched}
-                    final = list(combined.values())
-
-                if final:
-                    # Sort by distance
-                    final_sorted = sorted(final, key=lambda h: geodesic((lat, lon), (h[1], h[2])).km)
-                    
-                    # Map
-                    map_data = pd.DataFrame([(lat, lon)] + [(h[1], h[2]) for h in final_sorted[:10]],
-                                            columns=["lat", "lon"])
-                    st.map(map_data)
-
-                    # Display hospitals
-                    data_list = []
-                    for h in final_sorted[:10]:
-                        name, h_lat, h_lon = h
-                        dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
-                        map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
-                        st.markdown(f"""
-                        <div style="border:1px solid #ddd; padding:10px; border-radius:10px;">
-                            <b>🏥 {name}</b><br>
-                            📏 {dist} km<br>
-                            <a href="{map_link}" target="_blank">Open Map</a>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        data_list.append([name, dist, h_lat, h_lon])
-
-                    df = pd.DataFrame(data_list, columns=["Hospital Name", "Distance (km)", "Latitude", "Longitude"])
-                    st.download_button("⬇ Download Hospital List", df.to_csv(index=False), "hospitals.csv")
-
-                else:
-                    st.warning("⚠️ No hospitals found. Try changing radius or check spelling of City/State.")
+        if st.button("📍 Find Hospitals Near You"):
+            if not city or not state:
+                st.warning("⚠️ Please enter City and State")
             else:
-                st.error("❌ Location not found. Check City/State spelling or network connection.")
+                full_address = f"{area}, {city}, {state}, India"
+                with st.spinner("📍 Finding your location..."):
+                    location = get_location(full_address)
+
+                if location:
+                    lat, lon = location.latitude, location.longitude
+                    st.success(f"✅ Location found: ({lat}, {lon})")
+
+                    with st.spinner("🏥 Fetching nearby hospitals..."):
+                        nearby = get_hospitals_osm(lat, lon)
+                        searched = search_hospitals_by_name(search, city, state) if search else []
+                        combined = {(h[1], h[2]): h for h in nearby + searched}
+                        final = list(combined.values())
+
+                    if final:
+                        final_sorted = sorted(final, key=lambda h: geodesic((lat, lon), (h[1], h[2])).km)
+                        map_data = pd.DataFrame([(lat, lon)] + [(h[1], h[2]) for h in final_sorted[:10]], columns=["lat", "lon"])
+                        st.map(map_data)
+
+                        data_list = []
+                        for h in final_sorted[:10]:
+                            name, h_lat, h_lon = h
+                            dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
+                            map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
+                            st.markdown(f"""
+                            <div style="border:1px solid #ddd; padding:10px; border-radius:10px;">
+                                <b>🏥 {name}</b><br>
+                                📏 {dist} km<br>
+                                <a href="{map_link}" target="_blank">Open Map</a>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            data_list.append([name, dist, h_lat, h_lon])
+
+                        df = pd.DataFrame(data_list, columns=["Hospital Name", "Distance (km)", "Latitude", "Longitude"])
+                        st.download_button("⬇ Download Hospital List", df.to_csv(index=False), "hospitals.csv")
+                    else:
+                        st.warning("⚠️ No hospitals found. Try different location.")
+                else:
+                    st.error("❌ Location not found. Check City/State spelling or network connection.")
 
     # -------- Care Plan --------
-    else:
+    if option == "Care Plan (Cancer Confirmed)":
         st.header("🧾 Cancer Confirmed Care Plan")
         name = st.text_input("Patient Name")
         age = st.number_input("Age", 10, 100)
@@ -199,7 +191,6 @@ if risk_level in ["High", "Medium"]:
 
         if st.button("Generate Care Plan"):
             st.success(f"Care Plan for {name}")
-
             st.subheader("📅 Daily Timetable")
             st.write("""
 - 🏃 7–8 AM → Exercise  
@@ -208,7 +199,6 @@ if risk_level in ["High", "Medium"]:
 - 🍽 7–8 PM → Dinner  
 """)
 
-            # Food Table
             if risk == "High":
                 data = {"Day":["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
                         "Breakfast":["Milk+Oats","Soup","Juice","Milk","Oats","Soup","Juice"],
@@ -249,7 +239,6 @@ elif role == "Doctor":
     medicines = st.text_area("Medicines Prescribed")
     notes = st.text_area("Consultation Notes")
 
-    # Save patient record
     if "records" not in st.session_state:
         st.session_state["records"] = []
 
@@ -265,18 +254,12 @@ elif role == "Doctor":
         })
         st.success("Saved")
 
-    # Show records
     if st.session_state["records"]:
         df = pd.DataFrame(st.session_state["records"])
         st.dataframe(df)
-
-        # CSV download
         st.download_button("⬇ Download Patients CSV", df.to_csv(index=False), "patients.csv")
-
-        # Risk chart
         st.bar_chart(df["Risk"].value_counts())
 
-        # PDF generation
         def create_pdf(rec):
             pdf = FPDF()
             pdf.add_page()
