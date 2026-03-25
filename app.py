@@ -127,51 +127,67 @@ if role == "Patient":
             st.write(f"Score: {risk_score}/12")
 
             # ------------------- Hospital Finder -------------------
-            if risk_level in ["High", "Medium"]:
-                st.subheader("🏥 Find Nearby Hospitals")
-                area = st.text_input("Area")
-                city = st.text_input("City")
-                state = st.text_input("State")
-                search = st.text_input("🔍 Search Hospital Name (optional)")
+          # ------------------- Hospital Finder (Fixed) -------------------
+if risk_level in ["High", "Medium"]:
+    st.subheader("🏥 Find Nearby Hospitals")
 
-                if st.button("📍 Find Hospitals"):
-                    full_address = f"{area}, {city}, {state}, India"
-                    location = get_location(full_address)
-                    if location:
-                        lat, lon = location.latitude, location.longitude
-                        st.success("✅ Location Found")
+    # Get location inputs
+    area = st.text_input("Area")
+    city = st.text_input("City")
+    state = st.text_input("State")
+    search = st.text_input("🔍 Search Hospital Name (optional)")
 
-                        nearby = get_hospitals_osm(lat, lon)
-                        searched = search_hospitals_by_name(search, city, state) if search else []
+    # Single button to trigger all
+    if st.button("📍 Find Hospitals Near You"):
 
-                        combined = {(h[1], h[2]): h for h in nearby + searched}
-                        final = list(combined.values())
+        if not city or not state:
+            st.warning("⚠️ Please enter City and State")
+        else:
+            full_address = f"{area}, {city}, {state}, India"
+            with st.spinner("📍 Finding your location..."):
+                location = get_location(full_address)
 
-                        if final:
-                            final_sorted = sorted(final, key=lambda h: geodesic((lat, lon), (h[1], h[2])).km)
-                            map_data = pd.DataFrame([(lat, lon)] + [(h[1], h[2]) for h in final_sorted[:10]], columns=["lat", "lon"])
-                            st.map(map_data)
+            if location:
+                lat, lon = location.latitude, location.longitude
+                st.success(f"✅ Location found: ({lat}, {lon})")
 
-                            data_list = []
-                            for h in final_sorted[:10]:
-                                name, h_lat, h_lon = h
-                                dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
-                                map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
-                                st.markdown(f"""
-                                <div style="border:1px solid #ddd; padding:10px; border-radius:10px;">
-                                    <b>🏥 {name}</b><br>
-                                    📏 {dist} km<br>
-                                    <a href="{map_link}" target="_blank">Open Map</a>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                data_list.append([name, dist, h_lat, h_lon])
+                with st.spinner("🏥 Fetching nearby hospitals..."):
+                    nearby = get_hospitals_osm(lat, lon)
+                    searched = search_hospitals_by_name(search, city, state) if search else []
+                    combined = {(h[1], h[2]): h for h in nearby + searched}
+                    final = list(combined.values())
 
-                            df = pd.DataFrame(data_list, columns=["Hospital Name", "Distance (km)", "Latitude", "Longitude"])
-                            st.download_button("⬇ Download Hospital List", df.to_csv(index=False), "hospitals.csv")
-                        else:
-                            st.warning("No hospitals found")
-                    else:
-                        st.error("Location not found")
+                if final:
+                    # Sort by distance
+                    final_sorted = sorted(final, key=lambda h: geodesic((lat, lon), (h[1], h[2])).km)
+                    
+                    # Map
+                    map_data = pd.DataFrame([(lat, lon)] + [(h[1], h[2]) for h in final_sorted[:10]],
+                                            columns=["lat", "lon"])
+                    st.map(map_data)
+
+                    # Display hospitals
+                    data_list = []
+                    for h in final_sorted[:10]:
+                        name, h_lat, h_lon = h
+                        dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
+                        map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
+                        st.markdown(f"""
+                        <div style="border:1px solid #ddd; padding:10px; border-radius:10px;">
+                            <b>🏥 {name}</b><br>
+                            📏 {dist} km<br>
+                            <a href="{map_link}" target="_blank">Open Map</a>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        data_list.append([name, dist, h_lat, h_lon])
+
+                    df = pd.DataFrame(data_list, columns=["Hospital Name", "Distance (km)", "Latitude", "Longitude"])
+                    st.download_button("⬇ Download Hospital List", df.to_csv(index=False), "hospitals.csv")
+
+                else:
+                    st.warning("⚠️ No hospitals found. Try changing radius or check spelling of City/State.")
+            else:
+                st.error("❌ Location not found. Check City/State spelling or network connection.")
 
     # -------- Care Plan --------
     else:
