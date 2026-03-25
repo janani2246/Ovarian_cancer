@@ -131,18 +131,10 @@ if role == "Patient":
     if "risk_level" in st.session_state and st.session_state["risk_level"] in ["High", "Medium"]:
         st.subheader("🏥 Find Nearby Hospitals")
 
-         col1, col2, col3 = st.columns(3)
-
-    with col1:
-        area = st.text_input("🏠 Area")
-
-    with col2:
-        city = st.text_input("🏙 City")
-
-    with col3:
-        state = st.text_input("🌏 State")
-
-    search = st.text_input("🔍 Search Hospital Name (optional)")
+        area = st.text_input("Area")
+        city = st.text_input("City")
+        state = st.text_input("State")
+        search = st.text_input("🔍 Search Hospital Name (optional)")
 
         if st.button("📍 Find Hospitals Near You"):
             if not city or not state:
