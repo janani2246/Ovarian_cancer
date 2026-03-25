@@ -1,6 +1,8 @@
 streamlit
 pandas
 numpy
+fpdf
 geopy
 requests
-fpdf
+speechrecognition
+pyaudio
