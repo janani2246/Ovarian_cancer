@@ -4,10 +4,18 @@ import numpy as np
 import datetime
 from fpdf import FPDF
 
+# 🔥 NEW IMPORTS (Location)
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
+from geopy.distance import geodesic
+import requests
+import time
+
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
 st.title("🧬 Ovarian Cancer Detection & Care System")
 
+# ---------------- BACKGROUND ----------------
 def set_bg(color):
     st.markdown(f"""
     <style>
@@ -18,6 +26,38 @@ def set_bg(color):
     </style>
     """, unsafe_allow_html=True)
 
+# ---------------- LOCATION FUNCTIONS ----------------
+def get_location(address):
+    geolocator = Nominatim(user_agent="hospital_app", timeout=10)
+    for _ in range(3):
+        try:
+            return geolocator.geocode(address)
+        except (GeocoderTimedOut, GeocoderUnavailable):
+            time.sleep(2)
+    return None
+
+
+def get_hospitals_osm(lat, lon, radius=5000):
+    url = "http://overpass-api.de/api/interpreter"
+    query = f"""
+    [out:json];
+    node["amenity"="hospital"](around:{radius},{lat},{lon});
+    out;
+    """
+    try:
+        response = requests.get(url, params={'data': query}, timeout=15)
+        data = response.json()
+    except:
+        return []
+
+    hospitals = []
+    for element in data.get('elements', []):
+        name = element.get('tags', {}).get('name', 'Unknown Hospital')
+        hospitals.append((name, element.get('lat'), element.get('lon')))
+    return hospitals
+
+
+# ---------------- ROLE ----------------
 role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
 # ================= PATIENT =================
@@ -63,18 +103,86 @@ if role == "Patient":
 
             risk_score = sum([int(v) for v in symptoms.values()])
 
+            # RESULT
             if risk_score >= 3:
                 st.error("🔴 High Risk")
+                risk_level = "High"
             elif risk_score >= 2:
                 st.warning("🟠 Medium Risk")
+                risk_level = "Medium"
             else:
                 st.success("🟢 Low Risk")
+                risk_level = "Low"
 
             st.write(f"Score: {risk_score}/12")
 
+            # ================= HOSPITAL FINDER =================
+            if risk_level in ["High", "Medium"]:
+
+                st.subheader("🏥 Find Nearby Hospitals")
+
+                area = st.text_input("Area")
+                city = st.text_input("City")
+                state = st.text_input("State")
+
+                if st.button("📍 Search Hospitals"):
+
+                    full_address = f"{area}, {city}, {state}, India"
+
+                    with st.spinner("📍 Finding location..."):
+                        location = get_location(full_address)
+
+                    if location:
+                        lat, lon = location.latitude, location.longitude
+                        st.success("✅ Location Found")
+
+                        with st.spinner("🏥 Fetching hospitals..."):
+                            hospitals = get_hospitals_osm(lat, lon)
+
+                        if hospitals:
+                            st.subheader("🏥 Nearby Hospitals")
+
+                            hospitals_sorted = sorted(
+                                hospitals,
+                                key=lambda h: geodesic((lat, lon), (h[1], h[2])).km
+                            )
+
+                            # MAP
+                            map_data = pd.DataFrame(
+                                [(lat, lon)] + [(h[1], h[2]) for h in hospitals_sorted[:10]],
+                                columns=["lat", "lon"]
+                            )
+                            st.map(map_data)
+
+                            # DISPLAY
+                            data_list = []
+                            for h in hospitals_sorted[:10]:
+                                name, h_lat, h_lon = h
+                                dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
+
+                                st.markdown(f"""
+                                <div style="border:1px solid #ddd; padding:10px; border-radius:10px; margin-bottom:8px;">
+                                    <b>🏥 {name}</b><br>
+                                    📏 {dist} km<br>
+                                    <a href="https://www.google.com/maps?q={h_lat},{h_lon}" target="_blank">Open Map</a>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                                data_list.append([name, dist, h_lat, h_lon])
+
+                            # CSV DOWNLOAD
+                            df_hosp = pd.DataFrame(data_list, columns=["Name", "Distance", "Lat", "Lon"])
+                            csv = df_hosp.to_csv(index=False).encode("utf-8")
+                            st.download_button("⬇ Download Hospitals CSV", csv, "hospitals.csv")
+
+                        else:
+                            st.warning("No hospitals found")
+
+                    else:
+                        st.error("Location not found")
+
     # -------- Care Plan --------
     else:
-
         st.header("🧾 Cancer Confirmed Care Plan")
 
         name = st.text_input("Patient Name")
@@ -95,59 +203,27 @@ if role == "Patient":
 - 🍽 7–8 PM → Dinner  
 """)
 
-            # ================= FOOD TIMETABLE =================
             st.subheader("🍽 1 Week Food Timetable")
 
             if risk == "High":
-
-                data = {
-                    "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-                    "Breakfast": ["Milk+Oats","Soup","Juice","Milk","Oats","Soup","Juice"],
-                    "Lunch": ["Veg Soup","Dal Soup","Rice+Veg","Soup","Veg Soup","Dal Soup","Soup"],
-                    "Dinner": ["Kanji","Porridge","Soup","Milk","Soup","Porridge","Kanji"]
-                }
                 st.error("🔴 Severe Stage Diet")
-
             elif risk == "Medium":
-
-                data = {
-                    "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-                    "Breakfast": ["Idli","Oats","Upma","Dosa","Idli","Oats","Dosa"],
-                    "Lunch": ["Rice+Dal","Khichdi","Veg Rice","Curd Rice","Rice+Dal","Veg Rice","Curd Rice"],
-                    "Dinner": ["Chapati","Soup","Chapati","Soup","Chapati","Soup","Chapati"]
-                }
                 st.warning("🟠 Medium Stage Diet")
-
             else:
-
-                data = {
-                    "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-                    "Breakfast": ["Oats+Fruits","Idli","Dosa","Upma","Oats","Idli","Dosa"],
-                    "Lunch": ["Brown Rice","Veg Rice","Dal Rice","Curd Rice","Veg Rice","Dal Rice","Curd Rice"],
-                    "Dinner": ["Chapati","Soup","Chapati","Soup","Chapati","Soup","Chapati"]
-                }
                 st.success("🟢 Starting Stage Diet")
 
-            df_food = pd.DataFrame(data)
-            st.table(df_food)
 
-
-
-# ============================
-# 👨‍⚕️ DOCTOR
-# ============================
+# ================= DOCTOR =================
 elif role == "Doctor":
 
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")
 
     st.header("👨‍⚕️ Smart Doctor Dashboard")
 
-    # ---------------- DOCTOR INFO ----------------
     st.subheader("👨‍⚕️ Doctor Details")
     doctor_name = st.text_input("Doctor Name")
     doctor_phone = st.text_input("Doctor Phone")
 
-    # ---------------- PATIENT INFO ----------------
     st.subheader("🧾 Patient Details")
 
     patient_name = st.text_input("Patient Name")
@@ -161,100 +237,21 @@ elif role == "Doctor":
     last_visit = st.date_input("Last Visit")
     next_visit = st.date_input("Next Visit")
 
-    # ---------------- SESSION STORAGE ----------------
     if "records" not in st.session_state:
         st.session_state["records"] = []
 
-    # ---------------- SAVE RECORD ----------------
     if st.button("💾 Save Patient Record"):
-
-        record = {
-            "Doctor": doctor_name,
-            "Doctor Phone": doctor_phone,
+        st.session_state["records"].append({
             "Name": patient_name,
             "Age": patient_age,
             "Phone": patient_phone,
             "Risk": risk_level,
-            "Medicines": medicines,
-            "Notes": notes,
-            "Last Visit": str(last_visit),
             "Next Visit": str(next_visit)
-        }
+        })
+        st.success("Saved")
 
-        st.session_state["records"].append(record)
-        st.success("✅ Patient Record Saved")
-
-    # ---------------- DISPLAY DATA ----------------
     if st.session_state["records"]:
-
         df = pd.DataFrame(st.session_state["records"])
-
-        st.subheader("📊 Patient Records")
         st.dataframe(df)
 
-        # ---------------- SEARCH ----------------
-        st.subheader("🔍 Search Patient")
-        search = st.text_input("Enter Name")
-
-        if search:
-            filtered = df[df["Name"].str.contains(search, case=False)]
-            st.write(filtered)
-
-        # ---------------- DELETE ----------------
-        st.subheader("❌ Delete Record")
-        delete_name = st.text_input("Enter Name to Delete")
-
-        if st.button("Delete Record"):
-            st.session_state["records"] = [
-                r for r in st.session_state["records"]
-                if r["Name"].lower() != delete_name.lower()
-            ]
-            st.success("Deleted Successfully")
-
-        # ---------------- DOWNLOAD CSV ----------------
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇ Download CSV", csv, "patients.csv")
-
-        # ---------------- CHART ----------------
-        st.subheader("📈 Risk Analysis")
         st.bar_chart(df["Risk"].value_counts())
-
-        # ---------------- PDF GENERATION ----------------
-        st.subheader("📄 Generate Patient Report")
-
-        selected_patient = st.selectbox("Select Patient", df["Name"])
-
-        def create_pdf(data):
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-
-            pdf.cell(200, 10, txt="Patient Medical Report", ln=True, align='C')
-            pdf.ln(10)
-
-            for key, value in data.items():
-                pdf.cell(200, 10, txt=f"{key}: {value}", ln=True)
-
-            file = f"{data['Name']}_report.pdf"
-            pdf.output(file)
-            return file
-
-        if st.button("📄 Generate PDF"):
-            patient_data = next(
-                r for r in st.session_state["records"]
-                if r["Name"] == selected_patient
-            )
-
-            file = create_pdf(patient_data)
-
-            with open(file, "rb") as f:
-                st.download_button("⬇ Download Report", f, file)
-
-        # ---------------- ALERT SYSTEM ----------------
-        st.subheader("⏰ Today Alerts")
-
-        today = str(datetime.date.today())
-
-        for r in st.session_state["records"]:
-            if r["Next Visit"] == today:
-                st.warning(f"⚠️ {r['Name']} has appointment today!")
