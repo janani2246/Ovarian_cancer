@@ -85,10 +85,7 @@ if role == "Patient":
     set_bg("linear-gradient(to right, #ffdde1, #ffccdd)")
     option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)"])
 
-    # Initialize risk_level for safe usage
-    risk_level = None
-
-    # -------- Predict --------
+    # -------- Predict Risk --------
     if option == "Predict Risk":
         st.header("👩 Patient Assessment")
 
@@ -111,27 +108,29 @@ if role == "Patient":
             "Fatigue": st.checkbox("Fatigue"),
         }
 
+        # Predict button
         if st.button("🔍 Predict Risk"):
             symptoms["Menstrual"] = menstrual_value
             symptoms["Menopause"] = menopause_value
             symptoms["Family"] = family_value
             risk_score = sum([int(v) for v in symptoms.values()])
 
-            # Display risk
+            # Persist risk_level in session_state
             if risk_score >= 3:
-                risk_level = "High"
+                st.session_state["risk_level"] = "High"
                 st.error("🔴 High Risk")
             elif risk_score >= 2:
-                risk_level = "Medium"
+                st.session_state["risk_level"] = "Medium"
                 st.warning("🟠 Medium Risk")
             else:
-                risk_level = "Low"
+                st.session_state["risk_level"] = "Low"
                 st.success("🟢 Low Risk")
             st.write(f"Score: {risk_score}/12")
 
-    # -------- Hospital Finder --------
-    if risk_level in ["High", "Medium"]:
+    # -------- Hospital Finder for High/Medium Risk --------
+    if "risk_level" in st.session_state and st.session_state["risk_level"] in ["High", "Medium"]:
         st.subheader("🏥 Find Nearby Hospitals")
+
         area = st.text_input("Area")
         city = st.text_input("City")
         state = st.text_input("State")
@@ -156,10 +155,15 @@ if role == "Patient":
                         final = list(combined.values())
 
                     if final:
+                        # Sort by distance
                         final_sorted = sorted(final, key=lambda h: geodesic((lat, lon), (h[1], h[2])).km)
-                        map_data = pd.DataFrame([(lat, lon)] + [(h[1], h[2]) for h in final_sorted[:10]], columns=["lat", "lon"])
+                        
+                        # Map
+                        map_data = pd.DataFrame([(lat, lon)] + [(h[1], h[2]) for h in final_sorted[:10]],
+                                                columns=["lat", "lon"])
                         st.map(map_data)
 
+                        # Display hospitals
                         data_list = []
                         for h in final_sorted[:10]:
                             name, h_lat, h_lon = h
@@ -176,10 +180,11 @@ if role == "Patient":
 
                         df = pd.DataFrame(data_list, columns=["Hospital Name", "Distance (km)", "Latitude", "Longitude"])
                         st.download_button("⬇ Download Hospital List", df.to_csv(index=False), "hospitals.csv")
+
                     else:
-                        st.warning("⚠️ No hospitals found. Try different location.")
+                        st.warning("⚠️ No hospitals found. Check spelling or try another location.")
                 else:
-                    st.error("❌ Location not found. Check City/State spelling or network connection.")
+                    st.error("❌ Location not found. Check city/state or network.")
 
     # -------- Care Plan --------
     if option == "Care Plan (Cancer Confirmed)":
@@ -191,6 +196,7 @@ if role == "Patient":
 
         if st.button("Generate Care Plan"):
             st.success(f"Care Plan for {name}")
+
             st.subheader("📅 Daily Timetable")
             st.write("""
 - 🏃 7–8 AM → Exercise  
@@ -199,6 +205,7 @@ if role == "Patient":
 - 🍽 7–8 PM → Dinner  
 """)
 
+            # Food Table
             if risk == "High":
                 data = {"Day":["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
                         "Breakfast":["Milk+Oats","Soup","Juice","Milk","Oats","Soup","Juice"],
@@ -239,6 +246,7 @@ elif role == "Doctor":
     medicines = st.text_area("Medicines Prescribed")
     notes = st.text_area("Consultation Notes")
 
+    # Save patient record
     if "records" not in st.session_state:
         st.session_state["records"] = []
 
@@ -254,12 +262,18 @@ elif role == "Doctor":
         })
         st.success("Saved")
 
+    # Show records
     if st.session_state["records"]:
         df = pd.DataFrame(st.session_state["records"])
         st.dataframe(df)
+
+        # CSV download
         st.download_button("⬇ Download Patients CSV", df.to_csv(index=False), "patients.csv")
+
+        # Risk chart
         st.bar_chart(df["Risk"].value_counts())
 
+        # PDF generation
         def create_pdf(rec):
             pdf = FPDF()
             pdf.add_page()
