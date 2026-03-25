@@ -142,111 +142,119 @@ elif role == "Doctor":
 
     st.header("👨‍⚕️ Smart Doctor Dashboard")
 
-    # Basic Info (OLD)
+    # ---------------- DOCTOR INFO ----------------
+    st.subheader("👨‍⚕️ Doctor Details")
     doctor_name = st.text_input("Doctor Name")
     doctor_phone = st.text_input("Doctor Phone")
 
-    st.subheader("Patient Info")
+    # ---------------- PATIENT INFO ----------------
+    st.subheader("🧾 Patient Details")
+
     patient_name = st.text_input("Patient Name")
-    patient_phone = st.text_input("Patient Phone")
+    patient_age = st.number_input("Age", 1, 120)
+    patient_phone = st.text_input("Phone Number")
+
+    risk_level = st.selectbox("Risk Level", ["High", "Medium", "Low"])
+    medicines = st.text_area("Medicines Prescribed")
+    notes = st.text_area("Doctor Notes")
 
     last_visit = st.date_input("Last Visit")
-
-    medicines = st.text_area("Medicines Prescribed")
-
-    notes = st.text_area("Consultation Notes")
-
-    if st.button("Save Consultation"):
-        st.session_state["patient"] = {
-            "name": patient_name,
-            "meds": medicines,
-            "notes": notes
-        }
-        st.success("Saved")
-
-    if "patient" in st.session_state:
-        st.write(st.session_state["patient"])
-
-    # ================= NEW FEATURES =================
-
-    st.subheader("➕ Additional Details")
-
-    patient_age = st.number_input("Age", 1, 120)
-    risk_level = st.selectbox("Risk Level", ["High", "Medium", "Low"])
     next_visit = st.date_input("Next Visit")
 
-    # Food Plan
-    def food_plan(risk):
-        if risk == "High":
-            return "Strict Diet (No Oil, Fruits, Veg)"
-        elif risk == "Medium":
-            return "Controlled Diet"
-        else:
-            return "Normal Diet"
-
-    st.info(food_plan(risk_level))
-
-    # Save multiple patients
+    # ---------------- SESSION STORAGE ----------------
     if "records" not in st.session_state:
         st.session_state["records"] = []
 
-    if st.button("💾 Save Full Record"):
-        st.session_state["records"].append({
+    # ---------------- SAVE RECORD ----------------
+    if st.button("💾 Save Patient Record"):
+
+        record = {
+            "Doctor": doctor_name,
+            "Doctor Phone": doctor_phone,
             "Name": patient_name,
             "Age": patient_age,
             "Phone": patient_phone,
             "Risk": risk_level,
+            "Medicines": medicines,
+            "Notes": notes,
+            "Last Visit": str(last_visit),
             "Next Visit": str(next_visit)
-        })
-        st.success("Saved")
+        }
 
-    # Show data
+        st.session_state["records"].append(record)
+        st.success("✅ Patient Record Saved")
+
+    # ---------------- DISPLAY DATA ----------------
     if st.session_state["records"]:
+
         df = pd.DataFrame(st.session_state["records"])
+
+        st.subheader("📊 Patient Records")
         st.dataframe(df)
 
-        # Search
-        search = st.text_input("Search Patient")
-        if search:
-            st.write(df[df["Name"].str.contains(search, case=False)])
+        # ---------------- SEARCH ----------------
+        st.subheader("🔍 Search Patient")
+        search = st.text_input("Enter Name")
 
-        # Delete
-        delete_name = st.text_input("Delete Name")
-        if st.button("Delete"):
+        if search:
+            filtered = df[df["Name"].str.contains(search, case=False)]
+            st.write(filtered)
+
+        # ---------------- DELETE ----------------
+        st.subheader("❌ Delete Record")
+        delete_name = st.text_input("Enter Name to Delete")
+
+        if st.button("Delete Record"):
             st.session_state["records"] = [
                 r for r in st.session_state["records"]
                 if r["Name"].lower() != delete_name.lower()
             ]
-            st.success("Deleted")
+            st.success("Deleted Successfully")
 
-        # CSV
+        # ---------------- DOWNLOAD CSV ----------------
         csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download CSV", csv, "patients.csv")
+        st.download_button("⬇ Download CSV", csv, "patients.csv")
 
-        # Chart
+        # ---------------- CHART ----------------
+        st.subheader("📈 Risk Analysis")
         st.bar_chart(df["Risk"].value_counts())
 
-    # PDF
-    def create_pdf():
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
+        # ---------------- PDF GENERATION ----------------
+        st.subheader("📄 Generate Patient Report")
 
-        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
-        pdf.cell(200, 10, txt=f"Age: {patient_age}", ln=True)
-        pdf.cell(200, 10, txt=f"Risk: {risk_level}", ln=True)
+        selected_patient = st.selectbox("Select Patient", df["Name"])
 
-        file = "report.pdf"
-        pdf.output(file)
-        return file
+        def create_pdf(data):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
 
-    if st.button("📄 Download PDF"):
-        file = create_pdf()
-        with open(file, "rb") as f:
-            st.download_button("Download", f, "report.pdf")
+            pdf.cell(200, 10, txt="Patient Medical Report", ln=True, align='C')
+            pdf.ln(10)
 
-    # Alerts
-    today = str(datetime.date.today())
-    for r in st.session_state["records"]:
-        if r["Next Visit"] == today:
-            st.warning(f"{r['Name']} has visit today!")
+            for key, value in data.items():
+                pdf.cell(200, 10, txt=f"{key}: {value}", ln=True)
+
+            file = f"{data['Name']}_report.pdf"
+            pdf.output(file)
+            return file
+
+        if st.button("📄 Generate PDF"):
+            patient_data = next(
+                r for r in st.session_state["records"]
+                if r["Name"] == selected_patient
+            )
+
+            file = create_pdf(patient_data)
+
+            with open(file, "rb") as f:
+                st.download_button("⬇ Download Report", f, file)
+
+        # ---------------- ALERT SYSTEM ----------------
+        st.subheader("⏰ Today Alerts")
+
+        today = str(datetime.date.today())
+
+        for r in st.session_state["records"]:
+            if r["Next Visit"] == today:
+                st.warning(f"⚠️ {r['Name']} has appointment today!")
