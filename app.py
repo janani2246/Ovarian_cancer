@@ -202,6 +202,64 @@ if role == "Patient":
                                 <a href="{map_link}" target="_blank">Open Map</a>
                             </div>
                             """, unsafe_allow_html=True)
+                        # -------- Care Plan --------
+    else:
+
+        st.header("🧾 Cancer Confirmed Care Plan")
+
+        name = st.text_input("Patient Name")
+        age = st.number_input("Age", 10, 100)
+        phone = st.text_input("Phone Number")
+
+        risk = st.selectbox("Risk Level", ["High", "Medium", "Low"])
+
+        if st.button("Generate Care Plan"):
+
+            st.success(f"Care Plan for {name}")
+
+            st.subheader("📅 Daily Timetable")
+            st.write("""
+- 🏃 7–8 AM → Exercise  
+- 🍽 9–10 AM → Breakfast  
+- 🍛 1–2 PM → Lunch  
+- 🍽 7–8 PM → Dinner  
+""")
+
+            # ================= FOOD TIMETABLE =================
+            st.subheader("🍽 1 Week Food Timetable")
+
+            if risk == "High":
+
+                data = {
+                    "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+                    "Breakfast": ["Milk+Oats","Soup","Juice","Milk","Oats","Soup","Juice"],
+                    "Lunch": ["Veg Soup","Dal Soup","Rice+Veg","Soup","Veg Soup","Dal Soup","Soup"],
+                    "Dinner": ["Kanji","Porridge","Soup","Milk","Soup","Porridge","Kanji"]
+                }
+                st.error("🔴 Severe Stage Diet")
+
+            elif risk == "Medium":
+
+                data = {
+                    "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+                    "Breakfast": ["Idli","Oats","Upma","Dosa","Idli","Oats","Dosa"],
+                    "Lunch": ["Rice+Dal","Khichdi","Veg Rice","Curd Rice","Rice+Dal","Veg Rice","Curd Rice"],
+                    "Dinner": ["Chapati","Soup","Chapati","Soup","Chapati","Soup","Chapati"]
+                }
+                st.warning("🟠 Medium Stage Diet")
+
+            else:
+
+                data = {
+                    "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+                    "Breakfast": ["Oats+Fruits","Idli","Dosa","Upma","Oats","Idli","Dosa"],
+                    "Lunch": ["Brown Rice","Veg Rice","Dal Rice","Curd Rice","Veg Rice","Dal Rice","Curd Rice"],
+                    "Dinner": ["Chapati","Soup","Chapati","Soup","Chapati","Soup","Chapati"]
+                }
+                st.success("🟢 Starting Stage Diet")
+
+            df_food = pd.DataFrame(data)
+            st.table(df_food)
 
 # ================= DOCTOR =================
 elif role == "Doctor":
