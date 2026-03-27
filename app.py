@@ -6,9 +6,7 @@ from fpdf import FPDF
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from geopy.distance import geodesic
-import requests
-import time
-import speech_recognition as sr   # ✅ VOICE ADDED
+
 
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 st.title("🧬 Ovarian Cancer Detection & Care System")
@@ -78,23 +76,7 @@ def search_hospitals_by_name(name, city, state):
         results.append((h_name, e.get('lat'), e.get('lon')))
     return results
 
-# ---------------- VOICE FUNCTION ----------------
-def voice_input():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("🎤 Speak now...")
-        audio = r.listen(source)
 
-    try:
-        text = r.recognize_google(audio)
-        st.success(f"🗣 You said: {text}")
-        return text.lower()
-    except:
-        st.error("❌ Voice not recognized")
-        return ""
-
-# ---------------- ROLE ----------------
-role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
 # ================= PATIENT =================
 if role == "Patient":
