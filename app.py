@@ -17,8 +17,7 @@ def set_bg(color):
     }}
     </style>
     """, unsafe_allow_html=True)
-
-role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
+option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)", "Find Nearby Hospitals"])
 
 # ================= PATIENT =================
 if role == "Patient":
@@ -71,6 +70,92 @@ if role == "Patient":
                 st.success("🟢 Low Risk")
 
             st.write(f"Score: {risk_score}/12")
+
+    # -------- LOCATION FEATURE --------
+elif option == "Find Nearby Hospitals":
+
+    import requests
+    from geopy.geocoders import Nominatim
+    from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
+    from geopy.distance import geodesic
+    import time
+
+    st.header("🏥 Nearby Hospital Finder")
+
+    # User Input
+    st.subheader("📍 Enter Your Location")
+    area = st.text_input("Area")
+    city = st.text_input("City")
+    state = st.text_input("State")
+
+    search = st.text_input("🔍 Search Hospital (Optional)")
+
+    # Functions
+    def get_location(address):
+        geolocator = Nominatim(user_agent="hospital_app", timeout=10)
+        for _ in range(3):
+            try:
+                return geolocator.geocode(address)
+            except (GeocoderTimedOut, GeocoderUnavailable):
+                time.sleep(2)
+        return None
+
+    def get_hospitals(lat, lon):
+        url = "http://overpass-api.de/api/interpreter"
+        query = f"""
+        [out:json];
+        node["amenity"="hospital"](around:5000,{lat},{lon});
+        out;
+        """
+        response = requests.get(url, params={'data': query})
+        data = response.json()
+        hospitals = []
+
+        for e in data.get("elements", []):
+            name = e.get("tags", {}).get("name", "Unknown Hospital")
+            hospitals.append((name, e["lat"], e["lon"]))
+
+        return hospitals
+
+    # Button
+    if st.button("🔍 Find Hospitals"):
+
+        if city and state:
+
+            full_address = f"{area}, {city}, {state}, India"
+            location = get_location(full_address)
+
+            if location:
+                lat, lon = location.latitude, location.longitude
+                st.success("✅ Location Found")
+
+                hospitals = get_hospitals(lat, lon)
+
+                if hospitals:
+                    st.subheader("🏥 Hospitals Found")
+
+                    # Map
+                    map_data = pd.DataFrame(
+                        [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
+                        columns=["lat", "lon"]
+                    )
+                    st.map(map_data)
+
+                    # List
+                    for h in hospitals[:10]:
+                        name, h_lat, h_lon = h
+                        dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
+
+                        st.write(f"🏥 {name} — {dist} km")
+
+                else:
+                    st.warning("No hospitals found nearby")
+
+            else:
+                st.error("Location not found")
+
+        else:
+            st.warning("Enter City & State")
 
     # -------- Care Plan --------
     else:
