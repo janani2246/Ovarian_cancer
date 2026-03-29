@@ -60,9 +60,9 @@ if role == "Patient":
             "Fatigue": st.checkbox("Fatigue"),
         }
 
-        # 👉 FIX: Initialize variables
-        risk_score = 0
-        show_location = False
+        # ✅ SESSION FIX
+        if "show_location" not in st.session_state:
+            st.session_state.show_location = False
 
         if st.button("🔍 Predict Risk"):
 
@@ -74,24 +74,25 @@ if role == "Patient":
 
             if risk_score >= 3:
                 st.error("🔴 High Risk")
-                show_location = True
+                st.session_state.show_location = True
             elif risk_score >= 2:
                 st.warning("🟠 Medium Risk")
-                show_location = True
+                st.session_state.show_location = True
             else:
                 st.success("🟢 Low Risk")
+                st.session_state.show_location = False
 
             st.write(f"Score: {risk_score}/12")
 
-        # 👉 LOCATION FEATURE (CORRECT PLACE)
-        if show_location:
+        # ================= LOCATION =================
+        if st.session_state.show_location:
 
             st.subheader("🏥 Nearby Hospitals (Recommended)")
             st.warning("⚠️ Please consult a doctor")
 
             location_input = st.text_input(
-                "📍 Enter Your Location",
-                placeholder="Eg: Guduvanchery / Pallavaram"
+                "📍 Enter Your Area",
+                placeholder="Eg: Urapakkam / Pallavaram"
             )
 
             if st.button("📍 Show Hospitals"):
@@ -99,12 +100,23 @@ if role == "Patient":
                 if location_input:
 
                     geolocator = Nominatim(user_agent="health_app")
-                    location = geolocator.geocode(f"{location_input}, India")
+                    location = geolocator.geocode(f"{location_input}, India", addressdetails=True)
 
                     if location:
                         lat, lon = location.latitude, location.longitude
-                        st.success(f"📍 Location: {location_input}")
 
+                        # ✅ Extract Area / City / State
+                        address = location.raw.get("address", {})
+
+                        area = address.get("suburb") or address.get("village") or address.get("town") or location_input
+                        city = address.get("city") or address.get("county") or address.get("state_district") or "Unknown City"
+                        state = address.get("state") or "Unknown State"
+
+                        st.success(f"📍 Area: {area}")
+                        st.info(f"🏙 City: {city}")
+                        st.info(f"🌍 State: {state}")
+
+                        # OSM API
                         url = "http://overpass-api.de/api/interpreter"
                         query = f"""
                         [out:json];
@@ -124,12 +136,14 @@ if role == "Patient":
                         if hospitals:
                             st.subheader("🏥 Hospitals Near You")
 
+                            # Map
                             map_data = pd.DataFrame(
                                 [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
                                 columns=["lat", "lon"]
                             )
                             st.map(map_data)
 
+                            # Hospital cards
                             for h in hospitals[:5]:
                                 name, h_lat, h_lon = h
                                 dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
@@ -137,10 +151,15 @@ if role == "Patient":
                                 map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
 
                                 st.markdown(f"""
-                                **🏥 {name}**  
-                                📏 Distance: {dist} km  
-                                👉 [Open in Maps]({map_link})
-                                """)
+                                <div style="border:1px solid #ddd; padding:12px; border-radius:10px; margin-bottom:10px;">
+                                <b>🏥 {name}</b><br>
+                                📍 Area: {area}<br>
+                                🏙 City: {city}<br>
+                                🌍 State: {state}<br>
+                                📏 Distance: {dist} km<br>
+                                <a href="{map_link}" target="_blank">📌 Open in Google Maps</a>
+                                </div>
+                                """, unsafe_allow_html=True)
 
                         else:
                             st.warning("No hospitals found nearby")
