@@ -60,6 +60,10 @@ if role == "Patient":
             "Fatigue": st.checkbox("Fatigue"),
         }
 
+        # 👉 FIX: Initialize variables
+        risk_score = 0
+        show_location = False
+
         if st.button("🔍 Predict Risk"):
 
             symptoms["Menstrual"] = menstrual_value
@@ -70,84 +74,82 @@ if role == "Patient":
 
             if risk_score >= 3:
                 st.error("🔴 High Risk")
+                show_location = True
             elif risk_score >= 2:
                 st.warning("🟠 Medium Risk")
+                show_location = True
             else:
                 st.success("🟢 Low Risk")
 
             st.write(f"Score: {risk_score}/12")
 
-            # ================= 📍 LOCATION FEATURE =================
-         
-if risk_score >= 2:
+        # 👉 LOCATION FEATURE (CORRECT PLACE)
+        if show_location:
 
-    st.subheader("🏥 Nearby Hospitals (Recommended)")
-    st.warning("⚠️ Please consult a doctor")
+            st.subheader("🏥 Nearby Hospitals (Recommended)")
+            st.warning("⚠️ Please consult a doctor")
 
-    location_input = st.text_input(
-        "📍 Enter Your Location",
-        placeholder="Eg: Guduvanchery, Chennai"
-    )
+            location_input = st.text_input(
+                "📍 Enter Your Location",
+                placeholder="Eg: Guduvanchery / Pallavaram"
+            )
 
-    if st.button("📍 Show Hospitals"):
+            if st.button("📍 Show Hospitals"):
 
-        if location_input:
+                if location_input:
 
-            geolocator = Nominatim(user_agent="health_app")
-            location = geolocator.geocode(f"{location_input}, India")
+                    geolocator = Nominatim(user_agent="health_app")
+                    location = geolocator.geocode(f"{location_input}, India")
 
-            if location:
-                lat, lon = location.latitude, location.longitude
-                st.success(f"📍 Location: {location_input}")
+                    if location:
+                        lat, lon = location.latitude, location.longitude
+                        st.success(f"📍 Location: {location_input}")
 
-                # OSM API
-                url = "http://overpass-api.de/api/interpreter"
-                query = f"""
-                [out:json];
-                node["amenity"="hospital"](around:5000,{lat},{lon});
-                out;
-                """
+                        url = "http://overpass-api.de/api/interpreter"
+                        query = f"""
+                        [out:json];
+                        node["amenity"="hospital"](around:5000,{lat},{lon});
+                        out;
+                        """
 
-                response = requests.get(url, params={'data': query})
-                data = response.json()
+                        response = requests.get(url, params={'data': query})
+                        data = response.json()
 
-                hospitals = []
+                        hospitals = []
 
-                for e in data.get("elements", []):
-                    name = e.get("tags", {}).get("name", "Unknown Hospital")
-                    hospitals.append((name, e["lat"], e["lon"]))
+                        for e in data.get("elements", []):
+                            name = e.get("tags", {}).get("name", "Unknown Hospital")
+                            hospitals.append((name, e["lat"], e["lon"]))
 
-                if hospitals:
-                    st.subheader("🏥 Hospitals Near You")
+                        if hospitals:
+                            st.subheader("🏥 Hospitals Near You")
 
-                    # Map
-                    map_data = pd.DataFrame(
-                        [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
-                        columns=["lat", "lon"]
-                    )
-                    st.map(map_data)
+                            map_data = pd.DataFrame(
+                                [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
+                                columns=["lat", "lon"]
+                            )
+                            st.map(map_data)
 
-                    # List hospitals
-                    for h in hospitals[:5]:
-                        name, h_lat, h_lon = h
-                        dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
+                            for h in hospitals[:5]:
+                                name, h_lat, h_lon = h
+                                dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
 
-                        map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
+                                map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
 
-                        st.markdown(f"""
-                        **🏥 {name}**  
-                        📏 Distance: {dist} km  
-                        👉 [Open in Maps]({map_link})
-                        """)
+                                st.markdown(f"""
+                                **🏥 {name}**  
+                                📏 Distance: {dist} km  
+                                👉 [Open in Maps]({map_link})
+                                """)
+
+                        else:
+                            st.warning("No hospitals found nearby")
+
+                    else:
+                        st.error("❌ Location not found")
 
                 else:
-                    st.warning("No hospitals found nearby")
-
-            else:
-                st.error("❌ Location not found")
-
-        else:
-            st.warning("⚠️ Please enter location")
+                    st.warning("⚠️ Please enter location")
 
     # -------- Care Plan --------
     else:
@@ -175,7 +177,6 @@ if risk_score >= 2:
             st.subheader("🍽 1 Week Food Timetable")
 
             if risk == "High":
-
                 data = {
                     "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
                     "Breakfast": ["Milk+Oats","Soup","Juice","Milk","Oats","Soup","Juice"],
@@ -185,7 +186,6 @@ if risk_score >= 2:
                 st.error("🔴 Severe Stage Diet")
 
             elif risk == "Medium":
-
                 data = {
                     "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
                     "Breakfast": ["Idli","Oats","Upma","Dosa","Idli","Oats","Dosa"],
@@ -195,7 +195,6 @@ if risk_score >= 2:
                 st.warning("🟠 Medium Stage Diet")
 
             else:
-
                 data = {
                     "Day": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
                     "Breakfast": ["Oats+Fruits","Idli","Dosa","Upma","Oats","Idli","Dosa"],
@@ -208,9 +207,9 @@ if risk_score >= 2:
             st.table(df_food)
 
 
-
 # ============================ DOCTOR ===========================
 elif role == "Doctor":
+
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")
     st.header("👨‍⚕️ Smart Doctor Dashboard")
 
@@ -227,7 +226,6 @@ elif role == "Doctor":
     medicines = st.text_area("Medicines Prescribed")
     notes = st.text_area("Consultation Notes")
 
-    # Save patient record
     if "records" not in st.session_state:
         st.session_state["records"] = []
 
@@ -243,34 +241,10 @@ elif role == "Doctor":
         })
         st.success("Saved")
 
-    # Show records
     if st.session_state["records"]:
         df = pd.DataFrame(st.session_state["records"])
         st.dataframe(df)
 
-        # CSV download
         st.download_button("⬇ Download Patients CSV", df.to_csv(index=False), "patients.csv")
 
-        # Risk chart
         st.bar_chart(df["Risk"].value_counts())
-
-        # PDF generation
-        def create_pdf(rec):
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            pdf.cell(200, 10, txt=f"Patient: {rec['Name']}", ln=True)
-            pdf.cell(200, 10, txt=f"Age: {rec['Age']}", ln=True)
-            pdf.cell(200, 10, txt=f"Risk: {rec['Risk']}", ln=True)
-            pdf.cell(200, 10, txt=f"Next Visit: {rec['Next Visit']}", ln=True)
-            pdf.cell(200, 10, txt=f"Medicines: {rec['Medicines']}", ln=True)
-            pdf.cell(200, 10, txt=f"Notes: {rec['Notes']}", ln=True)
-            filename = f"{rec['Name']}_report.pdf"
-            pdf.output(filename)
-            return filename
-
-        for rec in st.session_state["records"]:
-            if st.button(f"📄 Download PDF for {rec['Name']}"):
-                file = create_pdf(rec)
-                with open(file, "rb") as f:
-                    st.download_button("Download PDF", f, file)
