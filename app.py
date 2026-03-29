@@ -133,60 +133,25 @@ if role == "Patient":
 
 
 
-# ============================
-# 👨‍⚕️ DOCTOR
-# ============================
+# ============================ DOCTOR ===========================
 elif role == "Doctor":
-
     set_bg("linear-gradient(to right, #dbeafe, #cce0ff)")
-
     st.header("👨‍⚕️ Smart Doctor Dashboard")
 
-    # Basic Info (OLD)
     doctor_name = st.text_input("Doctor Name")
     doctor_phone = st.text_input("Doctor Phone")
 
     st.subheader("Patient Info")
     patient_name = st.text_input("Patient Name")
     patient_phone = st.text_input("Patient Phone")
-
+    patient_age = st.number_input("Age", 1, 120)
+    risk_level = st.selectbox("Risk Level", ["High","Medium","Low"])
     last_visit = st.date_input("Last Visit")
-
+    next_visit = st.date_input("Next Visit")
     medicines = st.text_area("Medicines Prescribed")
-
     notes = st.text_area("Consultation Notes")
 
-    if st.button("Save Consultation"):
-        st.session_state["patient"] = {
-            "name": patient_name,
-            "meds": medicines,
-            "notes": notes
-        }
-        st.success("Saved")
-
-    if "patient" in st.session_state:
-        st.write(st.session_state["patient"])
-
-    # ================= NEW FEATURES =================
-
-    st.subheader("➕ Additional Details")
-
-    patient_age = st.number_input("Age", 1, 120)
-    risk_level = st.selectbox("Risk Level", ["High", "Medium", "Low"])
-    next_visit = st.date_input("Next Visit")
-
-    # Food Plan
-    def food_plan(risk):
-        if risk == "High":
-            return "Strict Diet (No Oil, Fruits, Veg)"
-        elif risk == "Medium":
-            return "Controlled Diet"
-        else:
-            return "Normal Diet"
-
-    st.info(food_plan(risk_level))
-
-    # Save multiple patients
+    # Save patient record
     if "records" not in st.session_state:
         st.session_state["records"] = []
 
@@ -196,57 +161,40 @@ elif role == "Doctor":
             "Age": patient_age,
             "Phone": patient_phone,
             "Risk": risk_level,
-            "Next Visit": str(next_visit)
+            "Next Visit": str(next_visit),
+            "Medicines": medicines,
+            "Notes": notes
         })
         st.success("Saved")
 
-    # Show data
+    # Show records
     if st.session_state["records"]:
         df = pd.DataFrame(st.session_state["records"])
         st.dataframe(df)
 
-        # Search
-        search = st.text_input("Search Patient")
-        if search:
-            st.write(df[df["Name"].str.contains(search, case=False)])
+        # CSV download
+        st.download_button("⬇ Download Patients CSV", df.to_csv(index=False), "patients.csv")
 
-        # Delete
-        delete_name = st.text_input("Delete Name")
-        if st.button("Delete"):
-            st.session_state["records"] = [
-                r for r in st.session_state["records"]
-                if r["Name"].lower() != delete_name.lower()
-            ]
-            st.success("Deleted")
-
-        # CSV
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download CSV", csv, "patients.csv")
-
-        # Chart
+        # Risk chart
         st.bar_chart(df["Risk"].value_counts())
 
-    # PDF
-    def create_pdf():
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
+        # PDF generation
+        def create_pdf(rec):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            pdf.cell(200, 10, txt=f"Patient: {rec['Name']}", ln=True)
+            pdf.cell(200, 10, txt=f"Age: {rec['Age']}", ln=True)
+            pdf.cell(200, 10, txt=f"Risk: {rec['Risk']}", ln=True)
+            pdf.cell(200, 10, txt=f"Next Visit: {rec['Next Visit']}", ln=True)
+            pdf.cell(200, 10, txt=f"Medicines: {rec['Medicines']}", ln=True)
+            pdf.cell(200, 10, txt=f"Notes: {rec['Notes']}", ln=True)
+            filename = f"{rec['Name']}_report.pdf"
+            pdf.output(filename)
+            return filename
 
-        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
-        pdf.cell(200, 10, txt=f"Age: {patient_age}", ln=True)
-        pdf.cell(200, 10, txt=f"Risk: {risk_level}", ln=True)
-
-        file = "report.pdf"
-        pdf.output(file)
-        return file
-
-    if st.button("📄 Download PDF"):
-        file = create_pdf()
-        with open(file, "rb") as f:
-            st.download_button("Download", f, "report.pdf")
-
-    # Alerts
-    today = str(datetime.date.today())
-    for r in st.session_state["records"]:
-        if r["Next Visit"] == today:
-            st.warning(f"{r['Name']} has visit today!")
+        for rec in st.session_state["records"]:
+            if st.button(f"📄 Download PDF for {rec['Name']}"):
+                file = create_pdf(rec)
+                with open(file, "rb") as f:
+                    st.download_button("Download PDF", f, file)
