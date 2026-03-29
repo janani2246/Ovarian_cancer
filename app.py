@@ -78,66 +78,76 @@ if role == "Patient":
             st.write(f"Score: {risk_score}/12")
 
             # ================= 📍 LOCATION FEATURE =================
-            if risk_score >= 2:
+         
+if risk_score >= 2:
 
-                st.subheader("🏥 Nearby Hospitals (Recommended)")
-                st.warning("⚠️ Based on your condition, please consult a doctor")
+    st.subheader("🏥 Nearby Hospitals (Recommended)")
+    st.warning("⚠️ Please consult a doctor")
 
-                city = st.text_input("Enter City")
-                state = st.text_input("Enter State")
+    location_input = st.text_input(
+        "📍 Enter Your Location",
+        placeholder="Eg: Guduvanchery, Chennai"
+    )
 
-                if st.button("📍 Show Hospitals"):
+    if st.button("📍 Show Hospitals"):
 
-                    if city and state:
+        if location_input:
 
-                        geolocator = Nominatim(user_agent="health_app")
-                        location = geolocator.geocode(f"{city}, {state}, India")
+            geolocator = Nominatim(user_agent="health_app")
+            location = geolocator.geocode(f"{location_input}, India")
 
-                        if location:
-                            lat, lon = location.latitude, location.longitude
-                            st.success("✅ Location Found")
+            if location:
+                lat, lon = location.latitude, location.longitude
+                st.success(f"📍 Location: {location_input}")
 
-                            # OSM API
-                            url = "http://overpass-api.de/api/interpreter"
-                            query = f"""
-                            [out:json];
-                            node["amenity"="hospital"](around:5000,{lat},{lon});
-                            out;
-                            """
+                # OSM API
+                url = "http://overpass-api.de/api/interpreter"
+                query = f"""
+                [out:json];
+                node["amenity"="hospital"](around:5000,{lat},{lon});
+                out;
+                """
 
-                            response = requests.get(url, params={'data': query})
-                            data = response.json()
+                response = requests.get(url, params={'data': query})
+                data = response.json()
 
-                            hospitals = []
+                hospitals = []
 
-                            for e in data.get("elements", []):
-                                name = e.get("tags", {}).get("name", "Unknown Hospital")
-                                hospitals.append((name, e["lat"], e["lon"]))
+                for e in data.get("elements", []):
+                    name = e.get("tags", {}).get("name", "Unknown Hospital")
+                    hospitals.append((name, e["lat"], e["lon"]))
 
-                            if hospitals:
-                                st.subheader("🏥 Hospitals Near You")
+                if hospitals:
+                    st.subheader("🏥 Hospitals Near You")
 
-                                # Map
-                                map_data = pd.DataFrame(
-                                    [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
-                                    columns=["lat", "lon"]
-                                )
-                                st.map(map_data)
+                    # Map
+                    map_data = pd.DataFrame(
+                        [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
+                        columns=["lat", "lon"]
+                    )
+                    st.map(map_data)
 
-                                # List
-                                for h in hospitals[:5]:
-                                    name, h_lat, h_lon = h
-                                    dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
-                                    st.write(f"🏥 {name} — {dist} km")
+                    # List hospitals
+                    for h in hospitals[:5]:
+                        name, h_lat, h_lon = h
+                        dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
 
-                            else:
-                                st.warning("No hospitals found nearby")
+                        map_link = f"https://www.google.com/maps?q={h_lat},{h_lon}"
 
-                        else:
-                            st.error("Location not found")
+                        st.markdown(f"""
+                        **🏥 {name}**  
+                        📏 Distance: {dist} km  
+                        👉 [Open in Maps]({map_link})
+                        """)
 
-                    else:
-                        st.warning("Enter city and state")
+                else:
+                    st.warning("No hospitals found nearby")
+
+            else:
+                st.error("❌ Location not found")
+
+        else:
+            st.warning("⚠️ Please enter location")
 
     # -------- Care Plan --------
     else:
