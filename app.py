@@ -4,6 +4,11 @@ import numpy as np
 import datetime
 from fpdf import FPDF
 
+# 👉 NEW IMPORTS (for location)
+import requests
+from geopy.geocoders import Nominatim
+from geopy.distance import geodesic
+
 st.set_page_config(page_title="Ovarian Cancer AI", layout="wide")
 
 st.title("🧬 Ovarian Cancer Detection & Care System")
@@ -17,7 +22,8 @@ def set_bg(color):
     }}
     </style>
     """, unsafe_allow_html=True)
-option = st.radio("Choose Option", ["Predict Risk", "Care Plan (Cancer Confirmed)", "Find Nearby Hospitals"])
+
+role = st.sidebar.radio("Select Role", ["Patient", "Doctor"])
 
 # ================= PATIENT =================
 if role == "Patient":
@@ -71,91 +77,67 @@ if role == "Patient":
 
             st.write(f"Score: {risk_score}/12")
 
-    # -------- LOCATION FEATURE --------
-elif option == "Find Nearby Hospitals":
+            # ================= 📍 LOCATION FEATURE =================
+            if risk_score >= 2:
 
-    import requests
-    from geopy.geocoders import Nominatim
-    from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
-    from geopy.distance import geodesic
-    import time
+                st.subheader("🏥 Nearby Hospitals (Recommended)")
+                st.warning("⚠️ Based on your condition, please consult a doctor")
 
-    st.header("🏥 Nearby Hospital Finder")
+                city = st.text_input("Enter City")
+                state = st.text_input("Enter State")
 
-    # User Input
-    st.subheader("📍 Enter Your Location")
-    area = st.text_input("Area")
-    city = st.text_input("City")
-    state = st.text_input("State")
+                if st.button("📍 Show Hospitals"):
 
-    search = st.text_input("🔍 Search Hospital (Optional)")
+                    if city and state:
 
-    # Functions
-    def get_location(address):
-        geolocator = Nominatim(user_agent="hospital_app", timeout=10)
-        for _ in range(3):
-            try:
-                return geolocator.geocode(address)
-            except (GeocoderTimedOut, GeocoderUnavailable):
-                time.sleep(2)
-        return None
+                        geolocator = Nominatim(user_agent="health_app")
+                        location = geolocator.geocode(f"{city}, {state}, India")
 
-    def get_hospitals(lat, lon):
-        url = "http://overpass-api.de/api/interpreter"
-        query = f"""
-        [out:json];
-        node["amenity"="hospital"](around:5000,{lat},{lon});
-        out;
-        """
-        response = requests.get(url, params={'data': query})
-        data = response.json()
-        hospitals = []
+                        if location:
+                            lat, lon = location.latitude, location.longitude
+                            st.success("✅ Location Found")
 
-        for e in data.get("elements", []):
-            name = e.get("tags", {}).get("name", "Unknown Hospital")
-            hospitals.append((name, e["lat"], e["lon"]))
+                            # OSM API
+                            url = "http://overpass-api.de/api/interpreter"
+                            query = f"""
+                            [out:json];
+                            node["amenity"="hospital"](around:5000,{lat},{lon});
+                            out;
+                            """
 
-        return hospitals
+                            response = requests.get(url, params={'data': query})
+                            data = response.json()
 
-    # Button
-    if st.button("🔍 Find Hospitals"):
+                            hospitals = []
 
-        if city and state:
+                            for e in data.get("elements", []):
+                                name = e.get("tags", {}).get("name", "Unknown Hospital")
+                                hospitals.append((name, e["lat"], e["lon"]))
 
-            full_address = f"{area}, {city}, {state}, India"
-            location = get_location(full_address)
+                            if hospitals:
+                                st.subheader("🏥 Hospitals Near You")
 
-            if location:
-                lat, lon = location.latitude, location.longitude
-                st.success("✅ Location Found")
+                                # Map
+                                map_data = pd.DataFrame(
+                                    [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
+                                    columns=["lat", "lon"]
+                                )
+                                st.map(map_data)
 
-                hospitals = get_hospitals(lat, lon)
+                                # List
+                                for h in hospitals[:5]:
+                                    name, h_lat, h_lon = h
+                                    dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
+                                    st.write(f"🏥 {name} — {dist} km")
 
-                if hospitals:
-                    st.subheader("🏥 Hospitals Found")
+                            else:
+                                st.warning("No hospitals found nearby")
 
-                    # Map
-                    map_data = pd.DataFrame(
-                        [(lat, lon)] + [(h[1], h[2]) for h in hospitals[:10]],
-                        columns=["lat", "lon"]
-                    )
-                    st.map(map_data)
+                        else:
+                            st.error("Location not found")
 
-                    # List
-                    for h in hospitals[:10]:
-                        name, h_lat, h_lon = h
-                        dist = round(geodesic((lat, lon), (h_lat, h_lon)).km, 2)
-
-                        st.write(f"🏥 {name} — {dist} km")
-
-                else:
-                    st.warning("No hospitals found nearby")
-
-            else:
-                st.error("Location not found")
-
-        else:
-            st.warning("Enter City & State")
+                    else:
+                        st.warning("Enter city and state")
 
     # -------- Care Plan --------
     else:
@@ -180,7 +162,6 @@ elif option == "Find Nearby Hospitals":
 - 🍽 7–8 PM → Dinner  
 """)
 
-            # ================= FOOD TIMETABLE =================
             st.subheader("🍽 1 Week Food Timetable")
 
             if risk == "High":
