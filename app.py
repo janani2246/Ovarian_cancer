@@ -92,15 +92,19 @@ if role == "Patient":
 
             location_input = st.text_input(
                 "📍 Enter Your Area",
-                placeholder="Eg: Urapakkam / Pallavaram"
+                placeholder="Eg: Tambaram / Pallavaram"
             )
 
             if st.button("📍 Show Hospitals"):
 
                 if location_input:
 
-                    geolocator = Nominatim(user_agent="health_app")
-                    location = geolocator.geocode(f"{location_input}, India", addressdetails=True)
+                    geolocator = Nominatim(user_agent="health_app",timeout=10)
+                    try:
+                     location = geolocator.geocode(f"{location_input}, India",addressdetails=True,timeout=10)
+                    except Exception as e:
+                     st.error(f"Location Error: {e}")
+                     location = None
 
                     if location:
                         lat, lon = location.latitude, location.longitude
@@ -115,23 +119,69 @@ if role == "Patient":
                         st.success(f"📍 Area: {area}")
                         st.info(f"🏙 City: {city}")
                         st.info(f"🌍 State: {state}")
-
                         # OSM API
-                        url = "http://overpass-api.de/api/interpreter"
-                        query = f"""
-                        [out:json];
-                        node["amenity"="hospital"](around:5000,{lat},{lon});
-                        out;
-                        """
+                        url = "https://lz4.overpass-api.de/api/interpreter"
 
-                        response = requests.get(url, params={'data': query})
-                        data = response.json()
+                        query = f"""
+[out:json][timeout:25];
+(
+  node["amenity"="hospital"](around:2000,{lat},{lon});
+  way["amenity"="hospital"](around:5000,{lat},{lon});
+  relation["amenity"="hospital"](around:5000,{lat},{lon});
+);
+out center;
+"""
+
+                        headers = {
+                            "User-Agent": "OvarianCancerApp/1.0"
+                        }
+
+                        try:
+                            response = requests.get(
+                                url,
+                                params={"data": query},
+                                headers=headers,
+                                timeout=30
+                            )
+
+                            if response.status_code == 200:
+
+                                try:
+                                    data = response.json()
+                                except Exception:
+                                    st.error("❌ Invalid JSON response from Hospital API")
+                                    data = {"elements": []}
+
+                            else:
+                                st.error(f"❌ API Error: {response.status_code}")
+                                data = {"elements": []}
+
+                        except requests.exceptions.RequestException as e:
+                            st.error(f"❌ Connection Error: {e}")
+                            data = {"elements": []}
 
                         hospitals = []
 
-                        for e in data.get("elements", []):
-                            name = e.get("tags", {}).get("name", "Unknown Hospital")
-                            hospitals.append((name, e["lat"], e["lon"]))
+                        for hospital in data.get("elements", []):
+                            name = hospital.get("tags", {}).get(
+                                "name",
+                                "Unknown Hospital"
+                            )
+
+                            # Node
+                            if "lat" in hospital and "lon" in hospital:
+                                h_lat = hospital["lat"]
+                                h_lon = hospital["lon"]
+
+                            # Way / Relation
+                            elif "center" in hospital:
+                                h_lat = hospital["center"]["lat"]
+                                h_lon = hospital["center"]["lon"]
+
+                            else:
+                                continue
+
+                            hospitals.append((name, h_lat, h_lon))
 
                         if hospitals:
                             st.subheader("🏥 Hospitals Near You")
